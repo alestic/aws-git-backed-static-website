@@ -152,6 +152,7 @@ Resources:
           - !Ref DomainName
           - !Join ["", ["www.", !Ref DomainName]]
         DefaultRootObject: index.html
+        PriceClass: PriceClass_100
         Origins:
           -
             DomainName: !Join ["", [!Ref DomainName, ".", !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]]]
