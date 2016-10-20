@@ -1,5 +1,5 @@
 
-# Git-backed static website
+# Git-backed static website powered entirely by AWS
 
 ## Create CloudFormation stack for static website
 
@@ -101,4 +101,4 @@ versioned codepipeline bucket.
 
     #aws codecommit delete-repository \
       --region "$region" \
-      --repository-name "$domain"
+      --repository-name "$repository"
