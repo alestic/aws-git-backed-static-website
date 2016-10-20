@@ -22,7 +22,8 @@ zipdir=$virtualenv/lib/python2.7/site-packages
 pip install awscli
 
 rsync -va aws-git-backed-static-website-lambda.py $zipdir/index.py
-perl -pe '$_="#!/usr/bin/python\n" if $. == 1' $virtualenv/bin/aws >$zipdir/aws
+rsync -va $virtualenv/bin/aws $zipdir/aws
+perl -pi -e '$_ ="#!/usr/bin/python\n" if $. == 1' $zipdir/aws
 
 zipfile=$tmpdir/lambda.zip
 (cd $virtualenv/lib/python2.7/site-packages && zip -r9 $zipfile *)
