@@ -1,12 +1,14 @@
 
 # Git-backed static website powered entirely by AWS
 
+![](https://github.com/alestic/aws-git-backed-static-website/raw/master/src/aws-git-backed-static-website-architecture.png"Architecture dagram: Git-backed static website powerd by AWS")
+
 ## Create CloudFormation stack for static website
 
     domain=example.com
     email=yourrealemail@anotherdomain.com
 
-    template=git-backed-static-website-cloudformation.yml
+    template=aws-git-backed-static-website-cloudformation.yml
     stackname=${domain/./-}-$(date +%Y%m%d-%H%M%S)
     region=us-east-1
 

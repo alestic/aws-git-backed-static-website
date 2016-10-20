@@ -2,7 +2,7 @@
 #
 # Build and upload lambda function ZIP file
 #
-# ./upload-lambda-zip s3://run.alestic.com/lambda/lambda-git-backed-static-website.zip
+# ./upload-lambda-zip s3://run.alestic.com/lambda/aws-lambda-git-backed-static-website.zip
 #
 
 set -x
@@ -14,14 +14,17 @@ tmpdir=$(mktemp -d /tmp/lambda-XXXXXX)
 virtual_env=$tmpdir/virtual-env
 virtualenv $virtual_env
 source $virtual_env/bin/activate
+contents=$virtual_env/lib/python2.7/site-packages
 
 pip install awscli
-perl -pe 's%#!.*%#!/usr/bin/python% if $. == 1' $virtual_env/bin/aws $tmpdir/aws
+
+rsync -va aws-git-backed-static-website-lambda.py $contents/index.py
+perl -pe '$_="#!/usr/bin/python" if $. == 1' $virtual_env/bin/aws >$contents/aws
 
 zipfile=$tmpdir/lambda.zip
-(cd $tmpdir && zip -9 $zipfile index.py aws)
 (cd $virtual_env/lib/python2.7/site-packages && zip -r9 $zipfile *)
 
 aws s3 cp --acl=public-read $zipfile $target
 
-rm -rf aws $(dirname $zipfile) $virtual_env
+#rm -rf aws $(dirname $zipfile) $virtual_env
+echo $zipfile
