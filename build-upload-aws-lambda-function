@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Build AWS Lambda function ZIP file and upload to S3
+#
+# Usage: ./build-upload-aws-lambda-function S3BUCKET S3KEY
+#
+# ./build-upload-aws-lambda-function run.alestic.com lambda/aws-lambda-git-backed-static-website.zip
+#
+set -x
+set -i
+
+s3bucket=${1:?Specify target S3 bucket name}
+s3key=${2:?Specify target S3 key}
+target=s3://$s3bucket/$s3key
+
+tmpdir=$(mktemp -d /tmp/lambda-XXXXXX)
+virtualenv=$tmpdir/virtual-env
+virtualenv $virtualenv
+source $virtualenv/bin/activate
+zipdir=$virtualenv/lib/python2.7/site-packages
+
+pip install awscli
+
+rsync -va aws-git-backed-static-website-lambda.py $zipdir/index.py
+perl -pe '$_="#!/usr/bin/python\n" if $. == 1' $virtualenv/bin/aws >$zipdir/aws
+
+zipfile=$tmpdir/lambda.zip
+(cd $virtualenv/lib/python2.7/site-packages && zip -r9 $zipfile *)
+
+aws s3 cp --acl=public-read $zipfile $target
+
+rm -rf $tmpdir
