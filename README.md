@@ -89,10 +89,6 @@ Leaves behind buckets and Git repo.
 
     domain=...
 
-    aws codecommit delete-repository \
-      --region "$region" \
-      --repository-name "$domain"
-
     aws s3 rm --recursive s3://logs.$domain
     aws s3 rb s3://logs.$domain
     aws s3 rm --recursive s3://$domain
