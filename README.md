@@ -1,7 +1,7 @@
 
 # Git-backed static website powered entirely by AWS
 
-![](https://github.com/alestic/aws-git-backed-static-website/raw/master/src/aws-git-backed-static-website-architecture.png"Architecture dagram: Git-backed static website powerd by AWS")
+![diagram](https://raw.githubusercontent.com/alestic/aws-git-backed-static-website/master/aws-git-backed-static-website-architecture.png "Architecture dagram: Git-backed static website powerd by AWS")
 
 ## Create CloudFormation stack for static website
 
