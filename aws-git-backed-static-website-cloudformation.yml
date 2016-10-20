@@ -33,7 +33,7 @@ Parameters:
     MinLength: 6
     AllowedPattern: ".+@[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid email address"
-  LambdaFunctionS3Key:
+  TTL:
     Type: Number
     Description: "TTL in seconds"
     Default: 30
