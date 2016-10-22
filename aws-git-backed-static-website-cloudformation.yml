@@ -121,8 +121,8 @@ Resources:
       WebsiteConfiguration:
         RedirectAllRequestsTo:
           HostName: !Ref DomainName
-          Protocol: http
-    DeletionPolicy: Retain
+          Protocol: https
+    DeletionPolicy: Delete
 
   # Bucket for CodePipeline artifact storage: codepipeline.example.com
   CodePipelineBucket:
@@ -203,10 +203,10 @@ Resources:
             DNSName: !GetAtt CloudFrontDistribution.DomainName
         # www.example.com
         - Name: !Join ["", ["www.", !Ref DomainName, "."]]
-          Type: CNAME
-          TTL: 900
-          ResourceRecords:
-            - !Join ["", [!Ref DomainName, "."]]
+          Type: A
+          AliasTarget:
+            HostedZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", S3hostedzoneID]
+            DNSName: !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]
 
   # SNS topic for Git repository activity. Email subscription
   NotificationTopic:
