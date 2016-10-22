@@ -33,15 +33,27 @@ Parameters:
     MinLength: 6
     AllowedPattern: ".+@[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid email address"
-  TTL:
+  DefaultTTL:
     Type: Number
     Description: "TTL in seconds"
     Default: 30
-  LambdaFunctionS3Bucket:
+  MinimumTTL:
+    Description: "Minimum cache lifetime in seconds for the CloudFront distribution"
+    Default: 5
+    Type: Number
+  PriceClass:
+    Description: "Distribution price class. Default is US-only, PriceClass_All is worldwide but more expensive."
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Type: String
+  FunctionS3Bucket:
     Type: String
     Description: "S3 bucket containing ZIP of AWS Lambda function"
     Default: "run.alestic.com"
-  LambdaFunctionS3Key:
+  FunctionS3Key:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
@@ -114,7 +126,7 @@ Resources:
         Aliases:
           - !Ref DomainName
         DefaultRootObject: index.html
-        PriceClass: PriceClass_100
+        PriceClass: !Ref PriceClass
         Origins:
           -
             DomainName: !Sub "${DomainName}.s3-website-${AWS::Region}.amazonaws.com"
@@ -129,7 +141,8 @@ Resources:
             - GET
             - HEAD
           Compress: true
-          DefaultTTL: !Ref TTL
+          DefaultTTL: !Ref DefaultTTL
+          MinTTL: !Ref DefaultTTL
           ForwardedValues:
             QueryString: false
             Cookies:
@@ -276,8 +289,8 @@ Resources:
       Runtime: python2.7
       Handler: index.handler
       Code:
-        S3Bucket: !Ref LambdaFunctionS3Bucket
-        S3Key: !Ref LambdaFunctionS3Key
+        S3Bucket: !Ref FunctionS3Bucket
+        S3Key: !Ref FunctionS3Key
 
   # IAM info for CodePipeline
   CodePipelineRole:
@@ -374,3 +387,23 @@ Outputs:
   GitCloneUrlSsh:
     Description: Git ssh clone endpoint
     Value: !GetAtt GitRepository.CloneUrlSsh
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Lambda Setup
+        Parameters:
+          - FunctionS3Bucket
+          - FunctionS3Key
+      - Label:
+          default: CloudFront Options
+        Parameters:
+          - DomainName
+          - PriceClass
+          - MinimumTTL
+          - DefaultTTL
+      - Label:
+          default: Notification Preferences
+        Parameters:
+          - OperatorEmail
