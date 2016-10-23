@@ -4,7 +4,7 @@
 ![diagram](https://raw.githubusercontent.com/alestic/aws-git-backed-static-website/master/aws-git-backed-static-website-architecture.gif "Architecture dagram: Git-backed static website powerd by AWS")
 
 [![Launch CloudFormation stack][2]][1]
-[1]: https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?templateURL=http:%2F%2Fs3.amazonaws.com%2Frun.alestic.com%2Fcloudformation%2Faws-git-backed-static-website-cloudformation.yml&stackName=aws-git-backed-static-website
+[1]: https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?templateURL=https:%2F%2Fs3.amazonaws.com%2Frun.alestic.com%2Fcloudformation%2Faws-git-backed-static-website-cloudformation.yml&stackName=aws-git-backed-static-website
 [2]: https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png 
 ￼
 ## Overview
