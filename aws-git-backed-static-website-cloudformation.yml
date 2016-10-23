@@ -142,7 +142,7 @@ Resources:
             - HEAD
           Compress: true
           DefaultTTL: !Ref DefaultTTL
-          MinTTL: !Ref DefaultTTL
+          MinTTL: !Ref MinimumTTL
           ForwardedValues:
             QueryString: false
             Cookies:
@@ -181,7 +181,8 @@ Resources:
           AllowedMethods:
             - GET
             - HEAD
-          DefaultTTL: !Ref TTL
+          DefaultTTL: !Ref DefaultTTL
+          MinTTL: !Ref MinimumTTL
           ForwardedValues:
             QueryString: false
             Cookies:
