@@ -8,7 +8,7 @@ Description: |
   * Redirect from "www." to base domain
   * Access logs written to logs bucket
   * ACM Certificate for SSL
-  * CloudFront distribution for website https access
+  * CloudFront distributions for website https access
   * Route 53 hosted zone with DNS entries
   * CodePipeline (source CodeCommit, invoke Lambda)
   * S3 bucket for CodePipeline artifacts
@@ -139,9 +139,9 @@ Resources:
     Properties: 
       DomainName: !Ref DomainName
       SubjectAlternativeNames:
-        - !Join ["", ["www.", !Ref DomainName]]
+        - !Ref RedirectBucket
 
-  # CDN serves S3 content over HTTPS for example.com and www.example.com
+  # CDN serves S3 content over HTTPS for example.com
   CloudFrontDistribution:
     Type: "AWS::CloudFront::Distribution"
     DependsOn: LogsBucket
@@ -150,7 +150,6 @@ Resources:
         Enabled: true
         Aliases:
           - !Ref DomainName
-          - !Join ["", ["www.", !Ref DomainName]]
         DefaultRootObject: index.html
         PriceClass: PriceClass_100
         Origins:
@@ -182,6 +181,45 @@ Resources:
           AcmCertificateArn: !Ref Certificate
           SslSupportMethod: sni-only
 
+  # CDN serves S3 content over HTTPS for www.example.com
+  RedirectCloudFrontDistribution:
+    Type: "AWS::CloudFront::Distribution"
+    DependsOn: LogsBucket
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Aliases:
+          - !Ref RedirectBucket
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        Origins:
+          -
+            DomainName: !Join ["", [!Ref RedirectBucket, ".", !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]]]
+            Id: RedirectS3Origin
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: RedirectS3Origin
+          AllowedMethods:
+            - GET
+            - HEAD
+          DefaultTTL: !Ref TTL
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+             Forward: none
+          ViewerProtocolPolicy: allow-all
+        # logs.example.com/logs/cloudfront/www.example.com/
+        Logging:
+          Bucket: !Join ["", [!Ref LogsBucket, ".s3.amazonaws.com"]]
+          Prefix: !Join ["", ["logs/cloudfront/", !Ref RedirectBucket, "/"]]
+          IncludeCookies: false
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+
   # DNS: example.com, www.example.com
   Route53HostedZone:
     Type: "AWS::Route53::HostedZone"
@@ -202,11 +240,12 @@ Resources:
             HostedZoneId: Z2FDTNDATAQYW2 # CloudFront
             DNSName: !GetAtt CloudFrontDistribution.DomainName
         # www.example.com
-        - Name: !Join ["", ["www.", !Ref DomainName, "."]]
+        - Name: !Join ["", [!Ref RedirectBucket, "."]]
           Type: A
+          # Resolve to Redirect CloudFront distribution
           AliasTarget:
-            HostedZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", S3hostedzoneID]
-            DNSName: !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]
+            HostedZoneId: Z2FDTNDATAQYW2 # CloudFront
+            DNSName: !GetAtt RedirectCloudFrontDistribution.DomainName
 
   # SNS topic for Git repository activity. Email subscription
   NotificationTopic:
@@ -357,6 +396,9 @@ Outputs:
   CloudFrontDomain:
     Description: CloudFront distribution domain name
     Value: !Ref CloudFrontDistribution
+  RedirectCloudFrontDomain:
+    Description: Redirect CloudFront distribution domain name
+    Value: !Ref RedirectCloudFrontDistribution
   CodePipelineArn:
     Description: CodePipeline ARN
     Value: !Ref CodePipeline
