@@ -41,32 +41,6 @@ Benefits of this architecture include:
    traffic, though the costs for network traffic and DNS lookups will
    start to add up to more than a penny per month.
 
-The stack uses a number of AWS services including:
-
- - **CloudFormation** - Architecture management.
-
- - **CodeCommit** - Git repository.
-
- - **CodePipeline** - Passes Git repository content to AWS Lambda upon
-   modified.
-
- - **AWS Lambda** - Syncs Git repository content to S3 bucket for website
-
- - **S3 buckets** - Website content, www redirect, access logs,
-   CodePipeline artifacts
-
- - **CloudFront** - CDN, HTTPS management
-
- - **Certificate** Manager - Creation of free certificate for HTTPS
-
- - **CloudWatch** - AWS Lambda log output, metrics
-
- - **SNS** - Git repository activity notification
-
- - **Route 53** - DNS for website
-
- - **IAM** - Manage resource security and permissions
-
 ## Create CloudFormation stack for static website
 
     domain=example.com
