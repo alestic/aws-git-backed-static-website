@@ -88,11 +88,15 @@ The stack uses a number of AWS services including:
       --tags "Key=Name,Value=$stackname"
     echo region=$region stackname=$stackname
 
-Two email messages will be sent to the address associated with your
+Three email messages will be sent to the address associated with your
 AWS account. Open each and approve these:
 
- - ACM Certificate
+ - ACM Certificate (2)
  - SNS subscription
+
+The CloudFormation stack will be stuck until the ACM certificates are
+approved. The CloudFront distributions are created afterwards and can
+take over 30 minutes to complete.
 
 ### Get the name servers for updating in the registrar
 
