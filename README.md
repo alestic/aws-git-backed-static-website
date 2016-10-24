@@ -62,11 +62,12 @@ Benefits of this architecture include:
       --tags "Key=Name,Value=$stackname"
     echo region=$region stackname=$stackname
 
-Three email messages will be sent to the address associated with your
-AWS account. Open each and approve these:
+When the stack starts up, two email messages will be sent to the
+address associated with your domain's registration and one will be
+sent to your AWS account address. Open each email and approve these:
 
  - ACM Certificate (2)
- - SNS subscription
+ - SNS topic subscription
 
 The CloudFormation stack will be stuck until the ACM certificates are
 approved. The CloudFront distributions are created afterwards and can
