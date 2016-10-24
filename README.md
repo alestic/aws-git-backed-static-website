@@ -84,7 +84,7 @@ The stack uses a number of AWS services including:
       --template-body "file://$template" \
       --parameters \
         "ParameterKey=DomainName,ParameterValue=$domain" \
-        "ParameterKey=OperatorEmail,ParameterValue=$email" \
+        "ParameterKey=NotificationEmail,ParameterValue=$email" \
       --tags "Key=Name,Value=$stackname"
     echo region=$region stackname=$stackname
 
