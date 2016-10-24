@@ -49,11 +49,11 @@ Parameters:
       - PriceClass_200
       - PriceClass_All
     Type: String
-  FunctionS3Bucket:
+  LambdaFunctionS3Bucket:
     Type: String
     Description: "S3 bucket containing ZIP of AWS Lambda function"
     Default: "run.alestic.com"
-  FunctionS3Key:
+  LambdaFunctionS3Key:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
@@ -290,8 +290,8 @@ Resources:
       Runtime: python2.7
       Handler: index.handler
       Code:
-        S3Bucket: !Ref FunctionS3Bucket
-        S3Key: !Ref FunctionS3Key
+        S3Bucket: !Ref LambdaFunctionS3Bucket
+        S3Key: !Ref LambdaFunctionS3Key
 
   # IAM info for CodePipeline
   CodePipelineRole:
@@ -395,8 +395,8 @@ Metadata:
       - Label:
           default: Lambda Setup
         Parameters:
-          - FunctionS3Bucket
-          - FunctionS3Key
+          - LambdaFunctionS3Bucket
+          - LambdaFunctionS3Key
       - Label:
           default: CloudFront Options
         Parameters:
