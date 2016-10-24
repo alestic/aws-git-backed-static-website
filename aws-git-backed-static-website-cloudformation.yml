@@ -166,7 +166,6 @@ Resources:
         Enabled: true
         Aliases:
           - !Ref RedirectBucket
-        DefaultRootObject: index.html
         PriceClass: PriceClass_100
         Origins:
           -
