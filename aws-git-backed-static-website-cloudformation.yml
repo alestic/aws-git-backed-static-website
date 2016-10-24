@@ -33,61 +33,37 @@ Parameters:
     MinLength: 6
     AllowedPattern: ".+@[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid email address"
-  TTL:
+  DefaultTTL:
     Type: Number
     Description: "TTL in seconds"
     Default: 30
-  LambdaFunctionS3Bucket:
+  MinimumTTL:
+    Description: "Minimum cache lifetime in seconds for the CloudFront distribution"
+    Default: 5
+    Type: Number
+  PriceClass:
+    Description: "Distribution price class. Default is US-only, PriceClass_All is worldwide but more expensive."
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Type: String
+  FunctionS3Bucket:
     Type: String
     Description: "S3 bucket containing ZIP of AWS Lambda function"
     Default: "run.alestic.com"
-  LambdaFunctionS3Key:
+  FunctionS3Key:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
-
-Mappings:
-  RegionMap:
-    us-east-1:
-      S3hostedzoneID: Z3AQBSTGFYJSTF
-      websiteendpoint: s3-website-us-east-1.amazonaws.com
-    us-west-1:
-      S3hostedzoneID: Z2F56UZL2M1ACD
-      websiteendpoint: s3-website-us-west-1.amazonaws.com
-    us-west-2:
-      S3hostedzoneID: Z3BJ6K6RIION7M
-      websiteendpoint: s3-website-us-west-2.amazonaws.com
-    eu-west-1:
-      S3hostedzoneID: Z1BKCTXD74EZPE
-      websiteendpoint: s3-website-eu-west-1.amazonaws.com
-    ap-southeast-1:
-      S3hostedzoneID: Z3O0J2DXBE1FTB
-      websiteendpoint: s3-website-ap-southeast-1.amazonaws.com
-    ap-southeast-2:
-      S3hostedzoneID: Z1WCIGYICN2BYD
-      websiteendpoint: s3-website-ap-southeast-2.amazonaws.com
-    ap-northeast-1:
-      S3hostedzoneID: Z2M4EHUR26P7ZW
-      websiteendpoint: s3-website-ap-northeast-1.amazonaws.com
-    sa-east-1:
-      S3hostedzoneID: Z31GFT0UA1I2HV
-      websiteendpoint: s3-website-sa-east-1.amazonaws.com
-    ap-south-1:
-      S3hostedzoneID: Z11RGJOFQNVJUP
-      websiteendpoint: s3-website-ap-south-1.amazonaws.com
-    ap-northeast-2:
-      S3hostedzoneID: Z3W03O7B5YMIYP
-      websiteendpoint: s3-website-ap-northeast-2.amazonaws.com
-    eu-central-1:
-      S3hostedzoneID: Z21DNDUVLTQW6Q
-      websiteendpoint: s3-website-eu-central-1.amazonaws.com
 
 Resources:
   # Bucket for CloudFront and S3 access logs: logs.example.com
   LogsBucket:
     Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: !Join ["", ["logs.", !Ref DomainName]]
+      BucketName: !Sub "logs.${DomainName}"
       AccessControl: LogDeliveryWrite
     DeletionPolicy: Retain
 
@@ -104,7 +80,7 @@ Resources:
       # logs.example.com/logs/s3/example.com/
       LoggingConfiguration:
         DestinationBucketName: !Ref LogsBucket
-        LogFilePrefix: !Join ["", ["logs/s3/", !Ref DomainName, "/"]]
+        LogFilePrefix: !Sub "logs/s3/${DomainName}/"
     DeletionPolicy: Retain
 
   # Bucket to redirect to example.com: www.example.com
@@ -112,12 +88,12 @@ Resources:
     Type: "AWS::S3::Bucket"
     DependsOn: LogsBucket
     Properties: 
-      BucketName: !Join ["", ["www.", !Ref DomainName]]
+      BucketName: !Sub "www.${DomainName}"
       AccessControl: BucketOwnerFullControl
       # logs.example.com/logs/s3/www.example.com/
       LoggingConfiguration:
         DestinationBucketName: !Ref LogsBucket
-        LogFilePrefix: !Join ["", ["logs/s3/", "www.", !Ref DomainName, "/"]]
+        LogFilePrefix: !Sub "logs/s3/www.${DomainName}/"
       WebsiteConfiguration:
         RedirectAllRequestsTo:
           HostName: !Ref DomainName
@@ -128,7 +104,7 @@ Resources:
   CodePipelineBucket:
     Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: !Join ["", ["codepipeline.", !Ref DomainName]]
+      BucketName: !Sub "codepipeline.${DomainName}"
       VersioningConfiguration:
         Status: Enabled
     DeletionPolicy: Retain
@@ -139,22 +115,21 @@ Resources:
     Properties: 
       DomainName: !Ref DomainName
       SubjectAlternativeNames:
-        - !Ref RedirectBucket
+        - !Sub "www.${DomainName}"
 
   # CDN serves S3 content over HTTPS for example.com
   CloudFrontDistribution:
     Type: "AWS::CloudFront::Distribution"
-    DependsOn: LogsBucket
     Properties:
       DistributionConfig:
         Enabled: true
         Aliases:
           - !Ref DomainName
         DefaultRootObject: index.html
-        PriceClass: PriceClass_100
+        PriceClass: !Ref PriceClass
         Origins:
           -
-            DomainName: !Join ["", [!Ref DomainName, ".", !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]]]
+            DomainName: !Sub "${DomainName}.s3-website-${AWS::Region}.amazonaws.com"
             Id: S3Origin
             CustomOriginConfig:
               HTTPPort: 80
@@ -166,7 +141,8 @@ Resources:
             - GET
             - HEAD
           Compress: true
-          DefaultTTL: !Ref TTL
+          DefaultTTL: !Ref DefaultTTL
+          MinTTL: !Ref MinimumTTL
           ForwardedValues:
             QueryString: false
             Cookies:
@@ -174,8 +150,8 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         # logs.example.com/logs/cloudfront/example.com/
         Logging:
-          Bucket: !Join ["", [!Ref LogsBucket, ".s3.amazonaws.com"]]
-          Prefix: !Join ["", ["logs/cloudfront/", !Ref DomainName, "/"]]
+          Bucket: !GetAtt LogsBucket.DomainName
+          Prefix: !Sub "logs/cloudfront/${DomainName}/"
           IncludeCookies: false
         ViewerCertificate:
           AcmCertificateArn: !Ref Certificate
@@ -194,7 +170,7 @@ Resources:
         PriceClass: PriceClass_100
         Origins:
           -
-            DomainName: !Join ["", [!Ref RedirectBucket, ".", !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]]]
+            DomainName: !Sub "${RedirectBucket}.s3-website-${AWS::Region}.amazonaws.com"
             Id: RedirectS3Origin
             CustomOriginConfig:
               HTTPPort: 80
@@ -205,7 +181,8 @@ Resources:
           AllowedMethods:
             - GET
             - HEAD
-          DefaultTTL: !Ref TTL
+          DefaultTTL: !Ref DefaultTTL
+          MinTTL: !Ref MinimumTTL
           ForwardedValues:
             QueryString: false
             Cookies:
@@ -225,7 +202,7 @@ Resources:
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
-        Comment: !Join ["", ["Created by CloudFormation stack: ", !Ref "AWS::StackName"]]
+        Comment: !Sub "Created by CloudFormation stack: ${AWS::StackName}"
       Name: !Ref DomainName
   Route53RecordSetGroup:
     Type: "AWS::Route53::RecordSetGroup"
@@ -233,14 +210,14 @@ Resources:
       HostedZoneId: !Ref Route53HostedZone
       RecordSets:
         # example.com
-        - Name: !Join ["", [!Ref DomainName, "."]]
+        - Name: !Sub "${DomainName}."
           Type: A
           # Resolve to CloudFront distribution
           AliasTarget:
             HostedZoneId: Z2FDTNDATAQYW2 # CloudFront
             DNSName: !GetAtt CloudFrontDistribution.DomainName
         # www.example.com
-        - Name: !Join ["", [!Ref RedirectBucket, "."]]
+        - Name: !Sub "www.${DomainName}."
           Type: A
           # Resolve to Redirect CloudFront distribution
           AliasTarget:
@@ -251,7 +228,7 @@ Resources:
   NotificationTopic:
     Type: "AWS::SNS::Topic"
     Properties:
-      DisplayName: !Join ["", ["Activity in ", !Ref DomainName, " Git repository"]]
+      DisplayName: !Sub "Activity in ${DomainName} Git repository"
       Subscription:
         - Endpoint: !Ref OperatorEmail
           Protocol: email
@@ -260,10 +237,10 @@ Resources:
   GitRepository:
     Type: "AWS::CodeCommit::Repository"
     Properties: 
-      RepositoryDescription: !Join ["", ["Git repository for ", !Ref DomainName]]
+      RepositoryDescription: !Sub "Git repository for ${DomainName}"
       RepositoryName: !Ref DomainName
       Triggers:
-        - Name: !Join ["", ["Activity in ", !Ref DomainName,  " Git repository"]]
+        - Name: !Sub "Activity in ${DomainName} Git repository"
           DestinationArn: !Ref NotificationTopic
           Events:
             - all
@@ -284,7 +261,7 @@ Resources:
               - sts:AssumeRole
       Path: "/"
       Policies:
-        - PolicyName: !Join ["", [!Ref DomainName, "-execution-policy"]]
+        - PolicyName: !Sub "${DomainName}-execution-policy"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -300,21 +277,21 @@ Resources:
                 Action: "s3:*"
                 Resource:
                   - "arn:aws:s3:::*"
-                  - !Join ["", ["arn:aws:s3:::", !Ref CodePipelineBucket]]
-                  - !Join ["", ["arn:aws:s3:::", !Ref CodePipelineBucket, "/*"]]
+                  - !Sub "arn:aws:s3:::${CodePipelineBucket}"
+                  - !Sub "arn:aws:s3:::${CodePipelineBucket}/*"
 
   LambdaFunction:
     Type: "AWS::Lambda::Function"
     Properties: 
-      Description:  !Join ["", ["Copy Git branch contents to S3 bucket for ", !Ref DomainName]]
+      Description:  !Sub "Copy Git branch contents to S3 bucket for ${DomainName}"
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 1536
       Timeout: 300
       Runtime: python2.7
       Handler: index.handler
       Code:
-        S3Bucket: !Ref LambdaFunctionS3Bucket
-        S3Key: !Ref LambdaFunctionS3Key
+        S3Bucket: !Ref FunctionS3Bucket
+        S3Key: !Ref FunctionS3Key
 
   # IAM info for CodePipeline
   CodePipelineRole:
@@ -344,12 +321,12 @@ Resources:
   CodePipeline:
     Type: "AWS::CodePipeline::Pipeline"
     Properties:
-      Name: !Join ["", [!Ref DomainName, "-codepipeline"]]
+      Name: !Sub "${DomainName}-codepipeline"
       ArtifactStore:
         Type: S3
         Location: !Ref CodePipelineBucket
       RestartExecutionOnUpdate: false
-      RoleArn: !Join ["", ["arn:aws:iam::", !Ref "AWS::AccountId", ":role/", !Ref CodePipelineRole]]
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/${CodePipelineRole}"
       Stages: 
         - Name: Source
           Actions: 
@@ -411,3 +388,23 @@ Outputs:
   GitCloneUrlSsh:
     Description: Git ssh clone endpoint
     Value: !GetAtt GitRepository.CloneUrlSsh
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Lambda Setup
+        Parameters:
+          - FunctionS3Bucket
+          - FunctionS3Key
+      - Label:
+          default: CloudFront Options
+        Parameters:
+          - DomainName
+          - PriceClass
+          - MinimumTTL
+          - DefaultTTL
+      - Label:
+          default: Notification Preferences
+        Parameters:
+          - OperatorEmail
