@@ -27,7 +27,7 @@ Parameters:
     ConstraintDescription: "Provide a valid domain name using only lowercase letters, numbers, and dash (-)"
   # Email address to receive Git activity notifications: you@anotherdomain.com
   # CANNOT be in same domain!
-  OperatorEmail:
+  NotificationEmail:
     Type: String
     Description: "Initial email address to receive Git change notifications"
     MinLength: 6
@@ -230,7 +230,7 @@ Resources:
     Properties:
       DisplayName: !Sub "Activity in ${DomainName} Git repository"
       Subscription:
-        - Endpoint: !Ref OperatorEmail
+        - Endpoint: !Ref NotificationEmail
           Protocol: email
 
   # Git repositry: example.com
@@ -393,18 +393,21 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Lambda Setup
-        Parameters:
-          - LambdaFunctionS3Bucket
-          - LambdaFunctionS3Key
-      - Label:
-          default: CloudFront Options
+          default: Website and Git repository
         Parameters:
           - DomainName
+      - Label:
+          default: Git Activity
+        Parameters:
+          - NotificationEmail
+      - Label:
+          default: CloudFront CDN
+        Parameters:
           - PriceClass
           - MinimumTTL
           - DefaultTTL
       - Label:
-          default: Notification Preferences
+          default: AWS Lambda
         Parameters:
-          - OperatorEmail
+          - LambdaFunctionS3Bucket
+          - LambdaFunctionS3Key
