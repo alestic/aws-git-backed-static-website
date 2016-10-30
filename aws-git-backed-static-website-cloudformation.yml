@@ -10,9 +10,10 @@ Description: |
   * ACM Certificate for SSL
   * CloudFront distributions for website https access
   * Route 53 hosted zone with DNS entries
-  * CodePipeline (source CodeCommit, invoke Lambda)
+  * CodePipeline (source CodeCommit, invoke Lambda functions)
   * S3 bucket for CodePipeline artifacts
-  * AWS Lambda function to copy CodeCommit Git changes to website S3 bucket
+  * AWS Lambda function(s) to generate static website from Git contents
+  * AWS Lambda function to copy generated website to website S3 bucket
   * SNS topic for CodeCommit Git change notifications
   * Email address subscribed to SNS notification topic
 
@@ -49,13 +50,41 @@ Parameters:
       - PriceClass_200
       - PriceClass_All
     Type: String
-  LambdaFunctionS3Bucket:
+  GeneratorLambdaFunctionS3Bucket:
     Type: String
-    Description: "S3 bucket containing ZIP of AWS Lambda function"
+    Description: "S3 bucket containing ZIP of AWS Lambda function (static site generator)"
     Default: "run.alestic.com"
-  LambdaFunctionS3Key:
+  GeneratorLambdaFunctionS3Key:
     Type: String
-    Description: "S3 key containing ZIP of AWS Lambda function"
+    Description: "S3 key containing ZIP of AWS Lambda function (static site generator)"
+    Default: "lambda/aws-lambda-codepipeline-site-generator-identity.zip"
+  GeneratorLambdaFunctionRuntime:
+    Type: String
+    Description: "Runtime language for AWS Lambda function (static site generator)"
+    Default: "python2.7"
+    AllowedValues:
+      - "python2.7"
+      - "nodejs"
+      - "nodejs4.3"
+      - "java8"
+  GeneratorLambdaFunctionHandler:
+    Type: String
+    Description: "Function Handler for AWS Lambda function (static site generator)"
+    Default: "index.handler"
+  GeneratorLambdaFunctionUserParameters:
+    Type: String
+    Description: "User parameters for AWS Lambda function (static site generator)"
+    Default: "unused"
+    MinLength: 1
+    MaxLength: 1000
+
+  SyncLambdaFunctionS3Bucket:
+    Type: String
+    Description: "S3 bucket containing ZIP of AWS Lambda function (sync to S3)"
+    Default: "run.alestic.com"
+  SyncLambdaFunctionS3Key:
+    Type: String
+    Description: "S3 key containing ZIP of AWS Lambda function (sync to S3)"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
 
 Resources:
@@ -87,7 +116,7 @@ Resources:
   RedirectBucket:
     Type: "AWS::S3::Bucket"
     DependsOn: LogsBucket
-    Properties: 
+    Properties:
       BucketName: !Sub "www.${DomainName}"
       AccessControl: BucketOwnerFullControl
       # logs.example.com/logs/s3/www.example.com/
@@ -112,7 +141,7 @@ Resources:
   # Certificate for HTTPS accesss through CloudFront
   Certificate:
     Type: "AWS::CertificateManager::Certificate"
-    Properties: 
+    Properties:
       DomainName: !Ref DomainName
       SubjectAlternativeNames:
         - !Sub "www.${DomainName}"
@@ -235,7 +264,7 @@ Resources:
   # Git repositry: example.com
   GitRepository:
     Type: "AWS::CodeCommit::Repository"
-    Properties: 
+    Properties:
       RepositoryDescription: !Sub "Git repository for ${DomainName}"
       RepositoryName: !Ref DomainName
       Triggers:
@@ -245,7 +274,7 @@ Resources:
             - all
     DeletionPolicy: Retain
 
-  # IAM info for AWS Lambda function
+  # IAM info for AWS Lambda functions
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -279,9 +308,23 @@ Resources:
                   - !Sub "arn:aws:s3:::${CodePipelineBucket}"
                   - !Sub "arn:aws:s3:::${CodePipelineBucket}/*"
 
-  LambdaFunction:
+  GeneratorLambdaFunction:
     Type: "AWS::Lambda::Function"
-    Properties: 
+    Properties:
+      Description:  !Sub "Static site generator for ${DomainName}"
+      #TBD: Some static site generators might need more permissions
+      Role: !GetAtt LambdaExecutionRole.Arn
+      MemorySize: 1536
+      Timeout: 300
+      Runtime: !Ref GeneratorLambdaFunctionRuntime
+      Handler: !Ref GeneratorLambdaFunctionHandler
+      Code:
+        S3Bucket: !Ref GeneratorLambdaFunctionS3Bucket
+        S3Key: !Ref GeneratorLambdaFunctionS3Key
+
+  SyncLambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
       Description:  !Sub "Copy Git branch contents to S3 bucket for ${DomainName}"
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 1536
@@ -289,8 +332,8 @@ Resources:
       Runtime: python2.7
       Handler: index.handler
       Code:
-        S3Bucket: !Ref LambdaFunctionS3Bucket
-        S3Key: !Ref LambdaFunctionS3Key
+        S3Bucket: !Ref SyncLambdaFunctionS3Bucket
+        S3Key: !Ref SyncLambdaFunctionS3Key
 
   # IAM info for CodePipeline
   CodePipelineRole:
@@ -309,9 +352,9 @@ Resources:
       Path: "/"
       Policies:
         - PolicyName: "codepipeline-service"
-          PolicyDocument: 
+          PolicyDocument:
             Version: "2012-10-17"
-            Statement: 
+            Statement:
               - Effect: "Allow"
                 Action: "*"
                 Resource: "*"
@@ -326,33 +369,49 @@ Resources:
         Location: !Ref CodePipelineBucket
       RestartExecutionOnUpdate: false
       RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/${CodePipelineRole}"
-      Stages: 
+      Stages:
         - Name: Source
-          Actions: 
+          Actions:
             - Name: SourceAction
-              ActionTypeId: 
+              ActionTypeId:
                 Category: Source
                 Owner: AWS
                 Provider: CodeCommit
                 Version: 1
-              Configuration: 
+              Configuration:
                 RepositoryName: !Ref DomainName
                 BranchName: master
-              OutputArtifacts: 
-                - Name: Content
+              OutputArtifacts:
+                - Name: SiteSource
               RunOrder: 1
-        - Name: Invoke
-          Actions: 
+        - Name: InvokeGenerator
+          Actions:
             - Name: InvokeAction
-              InputArtifacts: 
-                - Name: Content
-              ActionTypeId: 
+              InputArtifacts:
+                - Name: SiteSource
+              ActionTypeId:
                 Category: Invoke
                 Owner: AWS
                 Provider: Lambda
                 Version: 1
               Configuration:
-                FunctionName: !Ref LambdaFunction
+                FunctionName: !Ref GeneratorLambdaFunction
+                UserParameters: !Ref GeneratorLambdaFunctionUserParameters
+              OutputArtifacts:
+                - Name: SiteContent
+              RunOrder: 1
+        - Name: InvokeSync
+          Actions:
+            - Name: InvokeAction
+              InputArtifacts:
+                - Name: SiteContent
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: Lambda
+                Version: 1
+              Configuration:
+                FunctionName: !Ref SyncLambdaFunction
                 UserParameters: !Ref DomainName
               RunOrder: 1
 
@@ -400,13 +459,18 @@ Metadata:
         Parameters:
           - NotificationEmail
       - Label:
+          default: AWS Lambda Function (static site generator)
+        Parameters:
+          - GeneratorLambdaFunctionS3Bucket
+          - GeneratorLambdaFunctionS3Key
+      - Label:
+          default: AWS Lambda Function (Sync to S3)
+        Parameters:
+          - SyncLambdaFunctionS3Bucket
+          - SyncLambdaFunctionS3Key
+      - Label:
           default: CloudFront CDN
         Parameters:
           - PriceClass
           - MinimumTTL
           - DefaultTTL
-      - Label:
-          default: AWS Lambda
-        Parameters:
-          - LambdaFunctionS3Bucket
-          - LambdaFunctionS3Key
