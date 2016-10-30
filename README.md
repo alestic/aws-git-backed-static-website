@@ -141,6 +141,8 @@ versioned codepipeline bucket.
 
     # WARNING! DESTROYS CONTENT!
 
+    repository=...
+
     #aws codecommit delete-repository \
       --region "$region" \
       --repository-name "$repository"
