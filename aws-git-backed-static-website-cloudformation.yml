@@ -129,7 +129,7 @@ Resources:
         PriceClass: !Ref PriceClass
         Origins:
           -
-            DomainName: !Sub "${DomainName}.s3-website-${AWS::Region}.amazonaws.com"
+            DomainName: !Sub "${DomainName}.s3-website.${AWS::Region}.amazonaws.com"
             Id: S3Origin
             CustomOriginConfig:
               HTTPPort: 80
@@ -169,7 +169,7 @@ Resources:
         PriceClass: PriceClass_100
         Origins:
           -
-            DomainName: !Sub "${RedirectBucket}.s3-website-${AWS::Region}.amazonaws.com"
+            DomainName: !Sub "${RedirectBucket}.s3-website.${AWS::Region}.amazonaws.com"
             Id: RedirectS3Origin
             CustomOriginConfig:
               HTTPPort: 80
