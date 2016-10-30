@@ -77,7 +77,6 @@ Parameters:
     Default: "unused"
     MinLength: 1
     MaxLength: 1000
-
   SyncLambdaFunctionS3Bucket:
     Type: String
     Description: "S3 bucket containing ZIP of AWS Lambda function (sync to S3)"
@@ -463,6 +462,9 @@ Metadata:
         Parameters:
           - GeneratorLambdaFunctionS3Bucket
           - GeneratorLambdaFunctionS3Key
+          - GeneratorLambdaFunctionRuntime
+          - GeneratorLambdaFunctionHandler
+          - GeneratorLambdaFunctionUserParameters
       - Label:
           default: AWS Lambda Function (Sync to S3)
         Parameters:
