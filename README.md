@@ -54,12 +54,11 @@ Benefits of this architecture include:
       --region "$region" \
       --stack-name "$stackname" \
       --capabilities CAPABILITY_IAM \
-      --capabilities CAPABILITY_NAMED_IAM \
       --template-body "file://$template" \
+      --tags "Key=Name,Value=$stackname" \
       --parameters \
         "ParameterKey=DomainName,ParameterValue=$domain" \
-        "ParameterKey=NotificationEmail,ParameterValue=$email" \
-      --tags "Key=Name,Value=$stackname"
+        "ParameterKey=NotificationEmail,ParameterValue=$email"
     echo region=$region stackname=$stackname
 
 When the stack starts up, two email messages will be sent to the
