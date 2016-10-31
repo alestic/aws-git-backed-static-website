@@ -99,7 +99,7 @@ Here is the basic approach to creating the stack with CloudFormation.
     echo region=$region stackname=$stackname
 
 The above defaults to the Identity transformation plugin. You can
-specify the Hugo static site gerateor plugin by adding these
+specify the Hugo static site generator plugin by adding these
 parameters:
 
         "ParameterKey=GeneratorLambdaFunctionS3Bucket,ParameterValue=run.alestic.com" \
