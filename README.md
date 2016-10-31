@@ -14,10 +14,16 @@ Git repository and a static https website, along with the necessary
 AWS infrastructure glue so that every change to content in the Git
 repository is automatically deployed to the static web site.
 
-The input is a domain name and an email address.
+The website can serve the exact contents of the Git repository, or a
+static site generator plugin (e.g., Hugo) can be specified on launch
+to automatically generate the site content from the source in the Git
+repository.
 
-The output is a list of nameservers to set in your domain's registrar,
-and a Git repository URL for adding and updating the website content.
+The required stack parameters are a domain name and an email address.
+
+The primary output values are a list of nameservers to set in your
+domain's registrar and a Git repository URL for adding and updating
+the website content.
 
 Git repository event notifications are sent to an SNS topic and your
 provided email address is initially subscribed.
@@ -43,6 +49,37 @@ Benefits of this architecture include:
 
 ## Create CloudFormation stack for static website
 
+This CloudFormation stack has an AWS Lambda plugin architecture that
+supports arbitrary static site generators. Here are some generator
+plugins that are currently available
+
+1. [Identity transformation plugin][identity] - This copies the entire Git
+   repository content to the static website with no
+   modifications. This is currently the default plugin for the static
+   website CloudFormation template.
+
+2. [Subdirectory plugin][subdirectory] - This plugin is useful if your
+   Git repository has files that should not be included as part of the
+   static site. It publishes a specified subdirectory (e.g., "htdocs"
+   or "public-html") as the static website, keeping the rest of your
+   repository private.
+
+3. [Hugo plugin][hugoplugin] - This plugin runs the popular
+   [Hugo][hugo] static site generator. The Git repository should
+   include all source templates, content, theme, and config.
+
+You are welcome to make your own static site generators based on one
+of these and pass it into the CloudFormation stack.
+
+[identity]: https://github.com/alestic/aws-lambda-codepipeline-site-generator-identity
+[subdirectory]: https://github.com/alestic/aws-lambda-codepipeline-site-generator-subdirectory
+[hugoplugin]: https://github.com/alestic/aws-lambda-codepipeline-site-generator-hugo
+[hugo]: https://gohugo.io/
+
+## Create CloudFormation stack for static website
+
+Here is the basic approach to creating the stack with CloudFormation.
+
     domain=example.com
     email=yourrealemail@anotherdomain.com
 
@@ -60,6 +97,13 @@ Benefits of this architecture include:
         "ParameterKey=DomainName,ParameterValue=$domain" \
         "ParameterKey=NotificationEmail,ParameterValue=$email"
     echo region=$region stackname=$stackname
+
+The above defaults to the Identity transformation plugin. You can
+specify the Hugo static site gerateor plugin by adding these
+parameters:
+
+        "ParameterKey=GeneratorLambdaFunctionS3Bucket,ParameterValue=run.alestic.com" \
+        "ParameterKey=GeneratorLambdaFunctionS3Key,ParameterValue=lambda/aws-lambda-codepipeline-site-generator-hugo.zip"
 
 When the stack starts up, two email messages will be sent to the
 address associated with your domain's registration and one will be
