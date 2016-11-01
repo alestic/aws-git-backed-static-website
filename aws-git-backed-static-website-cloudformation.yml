@@ -297,14 +297,28 @@ Resources:
                 Resource: "arn:aws:logs:*:*:*"
               - Effect: Allow
                 Action:
-                  - "codepipeline:PutJobSuccessResult"
-                  - "codepipeline:PutJobFailureResult"
+                  - codepipeline:PutJobSuccessResult
+                  - codepipeline:PutJobFailureResult
                 Resource: "*"
               - Effect: Allow
-                Action: "s3:*"
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
                 Resource:
-                  - "arn:aws:s3:::*"
+                  - !Sub "arn:aws:s3:::${SiteBucket}"
                   - !Sub "arn:aws:s3:::${CodePipelineBucket}"
+              - Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:GetObjectAcl
+                  - s3:ListMultipartUploadParts
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource:
+                  - !Sub "arn:aws:s3:::${SiteBucket}/*"
                   - !Sub "arn:aws:s3:::${CodePipelineBucket}/*"
 
   GeneratorLambdaFunction:
