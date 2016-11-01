@@ -217,8 +217,8 @@ Resources:
           ViewerProtocolPolicy: allow-all
         # logs.example.com/logs/cloudfront/www.example.com/
         Logging:
-          Bucket: !Join ["", [!Ref LogsBucket, ".s3.amazonaws.com"]]
-          Prefix: !Join ["", ["logs/cloudfront/", !Ref RedirectBucket, "/"]]
+          Bucket: !Sub "${LogsBucket}.s3.amazonaws.com"
+          Prefix: !Sub "logs/cloudfront/${RedirectBucket}/"
           IncludeCookies: false
         ViewerCertificate:
           AcmCertificateArn: !Ref Certificate
