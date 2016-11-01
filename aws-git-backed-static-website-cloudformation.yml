@@ -88,13 +88,9 @@ Parameters:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function (sync to S3)"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
-  CreateRoute53Zone:
-    Description: "If you don't have an existing Route53 zone, set this to `yes` to create one in the template or `no` to skip"
-    Default: "yes"
-    Type: String
 
 Conditions:
-  NeedsNewZone: !Equals [!Ref CreateRoute53Zone, 'yes']
+  NeedsNewZone: !Equals [!Ref PreExistingHostedZoneDomain, '']
 
 Resources:
   # Bucket for CloudFront and S3 access logs: logs.example.com
