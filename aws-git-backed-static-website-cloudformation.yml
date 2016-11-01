@@ -26,6 +26,9 @@ Parameters:
     MaxLength: 253
     AllowedPattern: "[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid domain name using only lowercase letters, numbers, and dash (-)"
+  DomainRoot:
+    Description: "Root domain name for the Route53 zone and ACM cert email validation. This may be the same as DomainName"
+    Type: String
   # Email address to receive Git activity notifications: you@anotherdomain.com
   # CANNOT be in same domain!
   NotificationEmail:
@@ -85,6 +88,13 @@ Parameters:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function (sync to S3)"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
+  CreateRoute53Zone:
+    Description: "If you don't have an existing Route53 zone, set this to `yes` to create one in the template or `no` to skip"
+    Default: "yes"
+    Type: String
+
+Conditions:
+  NeedsNewZone: !Equals [!Ref CreateRoute53Zone, 'yes']
 
 Resources:
   # Bucket for CloudFront and S3 access logs: logs.example.com
@@ -226,6 +236,7 @@ Resources:
 
   # DNS: example.com, www.example.com
   Route53HostedZone:
+    Condition: NeedsNewZone
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
@@ -234,7 +245,8 @@ Resources:
   Route53RecordSetGroup:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
-      HostedZoneId: !Ref Route53HostedZone
+      HostedZoneId: !If [NeedsNewZone, !Ref Route53HostedZone, !Ref "AWS::NoValue"]
+      HostedZoneName: !If [NeedsNewZone, !Ref "AWS::NoValue", !Sub "${DomainRoot}."]
       RecordSets:
         # example.com
         - Name: !Sub "${DomainName}."
