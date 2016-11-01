@@ -26,8 +26,8 @@ Parameters:
     MaxLength: 253
     AllowedPattern: "[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid domain name using only lowercase letters, numbers, and dash (-)"
-  DomainRoot:
-    Description: "Root domain name for the Route53 zone and ACM cert email validation. This may be the same as DomainName"
+  PreExistingHostedZoneDomain:
+    Description: "Optional domain name for pre-existing Route 53 hosted zone. Leave empty to have hosted zone created and managed by this stack."
     Type: String
   # Email address to receive Git activity notifications: you@anotherdomain.com
   # CANNOT be in same domain!
@@ -246,7 +246,7 @@ Resources:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
       HostedZoneId: !If [NeedsNewZone, !Ref Route53HostedZone, !Ref "AWS::NoValue"]
-      HostedZoneName: !If [NeedsNewZone, !Ref "AWS::NoValue", !Sub "${DomainRoot}."]
+      HostedZoneName: !If [NeedsNewZone, !Ref "AWS::NoValue", !Sub "${PreExistingHostedZoneDomain}."]
       RecordSets:
         # example.com
         - Name: !Sub "${DomainName}."
@@ -504,7 +504,7 @@ Metadata:
           default: Website and Git repository
         Parameters:
           - DomainName
-          - DomainRoot
+          - PreExistingHostedZoneDomain
       - Label:
           default: Git Activity
         Parameters:
