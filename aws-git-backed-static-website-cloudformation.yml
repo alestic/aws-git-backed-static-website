@@ -26,6 +26,9 @@ Parameters:
     MaxLength: 253
     AllowedPattern: "[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid domain name using only lowercase letters, numbers, and dash (-)"
+  PreExistingHostedZoneDomain:
+    Description: "Optional domain name for pre-existing Route 53 hosted zone. Leave empty to have hosted zone created and managed by this stack."
+    Type: String
   # Email address to receive Git activity notifications: you@anotherdomain.com
   # CANNOT be in same domain!
   NotificationEmail:
@@ -85,6 +88,9 @@ Parameters:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function (sync to S3)"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
+
+Conditions:
+  NeedsNewZone: !Equals [!Ref PreExistingHostedZoneDomain, '']
 
 Resources:
   # Bucket for CloudFront and S3 access logs: logs.example.com
@@ -217,8 +223,8 @@ Resources:
           ViewerProtocolPolicy: allow-all
         # logs.example.com/logs/cloudfront/www.example.com/
         Logging:
-          Bucket: !Join ["", [!Ref LogsBucket, ".s3.amazonaws.com"]]
-          Prefix: !Join ["", ["logs/cloudfront/", !Ref RedirectBucket, "/"]]
+          Bucket: !Sub "${LogsBucket}.s3.amazonaws.com"
+          Prefix: !Sub "logs/cloudfront/${RedirectBucket}/"
           IncludeCookies: false
         ViewerCertificate:
           AcmCertificateArn: !Ref Certificate
@@ -226,6 +232,7 @@ Resources:
 
   # DNS: example.com, www.example.com
   Route53HostedZone:
+    Condition: NeedsNewZone
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
@@ -234,7 +241,8 @@ Resources:
   Route53RecordSetGroup:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
-      HostedZoneId: !Ref Route53HostedZone
+      HostedZoneId: !If [NeedsNewZone, !Ref Route53HostedZone, !Ref "AWS::NoValue"]
+      HostedZoneName: !If [NeedsNewZone, !Ref "AWS::NoValue", !Sub "${PreExistingHostedZoneDomain}."]
       RecordSets:
         # example.com
         - Name: !Sub "${DomainName}."
@@ -324,7 +332,7 @@ Resources:
   GeneratorLambdaFunction:
     Type: "AWS::Lambda::Function"
     Properties:
-      Description:  !Sub "Static site generator for ${DomainName}"
+      Description: !Sub "Static site generator for ${DomainName}"
       #TBD: Some static site generators might need more permissions
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 1536
@@ -479,7 +487,7 @@ Outputs:
     Value: !Ref LogsBucket
   HostedZoneId:
     Description: Route 53 Hosted Zone id
-    Value: !Ref Route53HostedZone
+    Value: !If [NeedsNewZone, !Ref Route53HostedZone, "None"]
   CloudFrontDomain:
     Description: CloudFront distribution domain name
     Value: !Ref CloudFrontDistribution
@@ -506,6 +514,7 @@ Metadata:
           default: Website and Git repository
         Parameters:
           - DomainName
+          - PreExistingHostedZoneDomain
       - Label:
           default: Git Activity
         Parameters:
