@@ -1,6 +1,6 @@
 #!/usr/bin/python2.7
 #
-# Lambda function for git-backed-static-website 
+# Lambda function for git-backed-static-website
 #
 # For more info, see: TBD
 #

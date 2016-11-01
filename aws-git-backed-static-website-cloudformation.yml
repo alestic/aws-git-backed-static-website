@@ -322,7 +322,7 @@ Resources:
   GeneratorLambdaFunction:
     Type: "AWS::Lambda::Function"
     Properties:
-      Description:  !Sub "Static site generator for ${DomainName}"
+      Description: !Sub "Static site generator for ${DomainName}"
       #TBD: Some static site generators might need more permissions
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 1536
@@ -477,7 +477,7 @@ Outputs:
     Value: !Ref LogsBucket
   HostedZoneId:
     Description: Route 53 Hosted Zone id
-    Value: !Ref Route53HostedZone
+    Value: !If [NeedsNewZone, !Ref Route53HostedZone, "None"]
   CloudFrontDomain:
     Description: CloudFront distribution domain name
     Value: !Ref CloudFrontDistribution
@@ -504,6 +504,7 @@ Metadata:
           default: Website and Git repository
         Parameters:
           - DomainName
+          - DomainRoot
       - Label:
           default: Git Activity
         Parameters:
