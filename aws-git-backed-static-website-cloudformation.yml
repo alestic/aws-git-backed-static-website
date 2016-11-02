@@ -26,9 +26,7 @@ Parameters:
     MaxLength: 253
     AllowedPattern: "[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid domain name using only lowercase letters, numbers, and dash (-)"
-  PreExistingHostedZoneDomain:
-    Description: "Optional domain name for pre-existing Route 53 hosted zone. Leave empty to have hosted zone created and managed by this stack."
-    Type: String
+
   # Email address to receive Git activity notifications: you@anotherdomain.com
   # CANNOT be in same domain!
   NotificationEmail:
@@ -37,14 +35,17 @@ Parameters:
     MinLength: 6
     AllowedPattern: ".+@[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid email address"
+
   DefaultTTL:
     Type: Number
     Description: "TTL in seconds"
     Default: 30
+
   MinimumTTL:
     Description: "Minimum cache lifetime in seconds for the CloudFront distribution"
     Default: 5
     Type: Number
+
   PriceClass:
     Description: "Distribution price class. Default is US-only, PriceClass_All is worldwide but more expensive."
     Default: PriceClass_100
@@ -53,14 +54,17 @@ Parameters:
       - PriceClass_200
       - PriceClass_All
     Type: String
+
   GeneratorLambdaFunctionS3Bucket:
     Type: String
     Description: "S3 bucket containing ZIP of AWS Lambda function (static site generator)"
     Default: "run.alestic.com"
+
   GeneratorLambdaFunctionS3Key:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function (static site generator)"
     Default: "lambda/aws-lambda-site-generator-identity.zip"
+
   GeneratorLambdaFunctionRuntime:
     Type: String
     Description: "Runtime language for AWS Lambda function (static site generator)"
@@ -70,31 +74,65 @@ Parameters:
       - "nodejs"
       - "nodejs4.3"
       - "java8"
+
   GeneratorLambdaFunctionHandler:
     Type: String
     Description: "Function Handler for AWS Lambda function (static site generator)"
     Default: "index.handler"
+
   GeneratorLambdaFunctionUserParameters:
     Type: String
     Description: "User parameters for AWS Lambda function (static site generator)"
     Default: "unused"
     MinLength: 1
     MaxLength: 1000
+
   SyncLambdaFunctionS3Bucket:
     Type: String
     Description: "S3 bucket containing ZIP of AWS Lambda function (sync to S3)"
     Default: "run.alestic.com"
+
   SyncLambdaFunctionS3Key:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function (sync to S3)"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
 
+  PreExistingGitRepository:
+    Description: "Optional Git repository name for pre-existing CodeCommit repository. Leave empty to have CodeCommit Repository created and managed by this stack."
+    Type: String
+    Default: ""
+
+  PreExistingHostedZoneDomain:
+    Description: "Optional domain name for pre-existing Route 53 hosted zone. Leave empty to have hosted zone created and managed by this stack."
+    Type: String
+    Default: ""
+
+  PreExistingSiteBucket:
+    Description: "Optional name of pre-existing website bucket. Leave empty to have website bucket created and managed by this stack."
+    Type: String
+    Default: ""
+
+  PreExistingRedirectBucket:
+    Description: "Optional name of pre-existing redirect bucket. Leave empty to have redirect bucket created and managed by this stack."
+    Type: String
+    Default: ""
+
+  PreExistingLogsBucket:
+    Description: "Optional name of pre-existing access logs bucket. Leave empty to have access logs bucket created and managed by this stack."
+    Type: String
+    Default: ""
+
 Conditions:
-  NeedsNewZone: !Equals [!Ref PreExistingHostedZoneDomain, '']
+  NeedsNewGitRepository: !Equals [!Ref PreExistingGitRepository, ""]
+  NeedsNewHostedZone: !Equals [!Ref PreExistingHostedZoneDomain, ""]
+  NeedsNewSiteBucket: !Equals [!Ref PreExistingSiteBucket, ""]
+  NeedsNewRedirectBucket: !Equals [!Ref PreExistingRedirectBucket, ""]
+  NeedsNewLogsBucket: !Equals [!Ref PreExistingLogsBucket, ""]
 
 Resources:
   # Bucket for CloudFront and S3 access logs: logs.example.com
   LogsBucket:
+    Condition: NeedsNewLogsBucket
     Type: "AWS::S3::Bucket"
     Properties:
       BucketName: !Sub "logs.${DomainName}"
@@ -103,8 +141,8 @@ Resources:
 
   # Bucket for site content: example.com
   SiteBucket:
+    Condition: NeedsNewSiteBucket
     Type: "AWS::S3::Bucket"
-    DependsOn: LogsBucket
     Properties:
       BucketName: !Ref DomainName
       AccessControl: PublicRead
@@ -113,20 +151,20 @@ Resources:
         ErrorDocument: error.html
       # logs.example.com/logs/s3/example.com/
       LoggingConfiguration:
-        DestinationBucketName: !Ref LogsBucket
+        DestinationBucketName: !If [NeedsNewLogsBucket, !Ref LogsBucket, !Ref PreExistingLogsBucket]
         LogFilePrefix: !Sub "logs/s3/${DomainName}/"
     DeletionPolicy: Retain
 
   # Bucket to redirect to example.com: www.example.com
   RedirectBucket:
+    Condition: NeedsNewRedirectBucket
     Type: "AWS::S3::Bucket"
-    DependsOn: LogsBucket
     Properties:
       BucketName: !Sub "www.${DomainName}"
       AccessControl: BucketOwnerFullControl
       # logs.example.com/logs/s3/www.example.com/
       LoggingConfiguration:
-        DestinationBucketName: !Ref LogsBucket
+        DestinationBucketName: !If [NeedsNewLogsBucket, !Ref LogsBucket, !Ref PreExistingLogsBucket]
         LogFilePrefix: !Sub "logs/s3/www.${DomainName}/"
       WebsiteConfiguration:
         RedirectAllRequestsTo:
@@ -184,7 +222,7 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         # logs.example.com/logs/cloudfront/example.com/
         Logging:
-          Bucket: !GetAtt LogsBucket.DomainName
+          Bucket: !Join ["", [!If [NeedsNewLogsBucket, !Ref LogsBucket, !Ref PreExistingLogsBucket], ".s3.amazonaws.com"]]
           Prefix: !Sub "logs/cloudfront/${DomainName}/"
           IncludeCookies: false
         ViewerCertificate:
@@ -194,16 +232,15 @@ Resources:
   # CDN serves S3 content over HTTPS for www.example.com
   RedirectCloudFrontDistribution:
     Type: "AWS::CloudFront::Distribution"
-    DependsOn: LogsBucket
     Properties:
       DistributionConfig:
         Enabled: true
         Aliases:
-          - !Ref RedirectBucket
+          - !If [NeedsNewRedirectBucket, !Ref RedirectBucket, !Ref PreExistingRedirectBucket]
         PriceClass: PriceClass_100
         Origins:
           -
-            DomainName: !Join ["", [!Ref RedirectBucket, ".", !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]]]
+            DomainName: !Join ["", [!If [NeedsNewRedirectBucket, !Ref RedirectBucket, !Ref PreExistingRedirectBucket], ".", !FindInMap [RegionMap, !Ref "AWS::Region", websiteendpoint]]]
             Id: RedirectS3Origin
             CustomOriginConfig:
               HTTPPort: 80
@@ -223,8 +260,8 @@ Resources:
           ViewerProtocolPolicy: allow-all
         # logs.example.com/logs/cloudfront/www.example.com/
         Logging:
-          Bucket: !Sub "${LogsBucket}.s3.amazonaws.com"
-          Prefix: !Sub "logs/cloudfront/${RedirectBucket}/"
+          Bucket: !Join ["", [!If [NeedsNewLogsBucket, !Ref LogsBucket, !Ref PreExistingLogsBucket], ".s3.amazonaws.com"]]
+          Prefix: !Sub "logs/cloudfront/www.${DomainName}/"
           IncludeCookies: false
         ViewerCertificate:
           AcmCertificateArn: !Ref Certificate
@@ -232,7 +269,7 @@ Resources:
 
   # DNS: example.com, www.example.com
   Route53HostedZone:
-    Condition: NeedsNewZone
+    Condition: NeedsNewHostedZone
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
@@ -241,8 +278,8 @@ Resources:
   Route53RecordSetGroup:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
-      HostedZoneId: !If [NeedsNewZone, !Ref Route53HostedZone, !Ref "AWS::NoValue"]
-      HostedZoneName: !If [NeedsNewZone, !Ref "AWS::NoValue", !Sub "${PreExistingHostedZoneDomain}."]
+      HostedZoneId: !If [NeedsNewHostedZone, !Ref Route53HostedZone, !Ref "AWS::NoValue"]
+      HostedZoneName: !If [NeedsNewHostedZone, !Ref "AWS::NoValue", !Sub "${PreExistingHostedZoneDomain}."]
       RecordSets:
         # example.com
         - Name: !Sub "${DomainName}."
@@ -270,6 +307,7 @@ Resources:
 
   # Git repositry: example.com
   GitRepository:
+    Condition: NeedsNewGitRepository
     Type: "AWS::CodeCommit::Repository"
     Properties:
       RepositoryDescription: !Sub "Git repository for ${DomainName}"
@@ -314,7 +352,7 @@ Resources:
                   - s3:ListBucket
                   - s3:ListBucketMultipartUploads
                 Resource:
-                  - !Sub "arn:aws:s3:::${SiteBucket}"
+                  - !Join ["", ["arn:aws:s3:::", !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket]]]
                   - !Sub "arn:aws:s3:::${CodePipelineBucket}"
               - Effect: Allow
                 Action:
@@ -326,7 +364,7 @@ Resources:
                   - s3:PutObject
                   - s3:PutObjectAcl
                 Resource:
-                  - !Sub "arn:aws:s3:::${SiteBucket}/*"
+                  - !Join ["", ["arn:aws:s3:::", !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket], "/*"]]
                   - !Sub "arn:aws:s3:::${CodePipelineBucket}/*"
 
   GeneratorLambdaFunction:
@@ -400,7 +438,7 @@ Resources:
                 Provider: CodeCommit
                 Version: 1
               Configuration:
-                RepositoryName: !Ref DomainName
+                RepositoryName: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
                 BranchName: master
               OutputArtifacts:
                 - Name: SiteSource
@@ -433,7 +471,7 @@ Resources:
                 Version: 1
               Configuration:
                 FunctionName: !Ref SyncLambdaFunction
-                UserParameters: !Ref DomainName
+                UserParameters: !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket]
               RunOrder: 1
 
 Mappings:
@@ -479,15 +517,19 @@ Outputs:
   DomainName:
     Description: Domain name
     Value: !Ref DomainName
-  WWWDomainName:
+  RedirectDomainName:
     Description: Redirect hostname
-    Value: !Ref RedirectBucket
+    Value: !If [NeedsNewRedirectBucket, !Ref RedirectBucket, !Ref PreExistingRedirectBucket]
+  SiteBucket:
+    Value: !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket]
+  RedirectBucket:
+    Value: !If [NeedsNewRedirectBucket, !Ref RedirectBucket, !Ref PreExistingRedirectBucket]
   LogsBucket:
     Description: S3 Bucket with access logs
-    Value: !Ref LogsBucket
+    Value: !If [NeedsNewLogsBucket, !Ref LogsBucket, !Ref PreExistingLogsBucket]
   HostedZoneId:
     Description: Route 53 Hosted Zone id
-    Value: !If [NeedsNewZone, !Ref Route53HostedZone, "None"]
+    Value: !If [NeedsNewHostedZone, !Ref Route53HostedZone, "N/A"]
   CloudFrontDomain:
     Description: CloudFront distribution domain name
     Value: !Ref CloudFrontDistribution
@@ -499,13 +541,13 @@ Outputs:
     Value: !Ref CodePipeline
   GitRepositoryName:
     Description: Git repository name
-    Value: !Ref DomainName
+    Value: !If [NeedsNewGitRepository, !Ref GitRepository, !Ref PreExistingGitRepository]
   GitCloneUrlHttp:
     Description: Git https clone endpoint
-    Value: !GetAtt GitRepository.CloneUrlHttp
+    Value: !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlHttp, "N/A"]
   GitCloneUrlSsh:
     Description: Git ssh clone endpoint
-    Value: !GetAtt GitRepository.CloneUrlSsh
+    Value: !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlSsh, "N/A"]
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -540,4 +582,8 @@ Metadata:
       - Label:
           default: PreExisting Resources To Use (Leave empty for stack to create and manage)
         Parameters:
+          - PreExistingGitRepository
           - PreExistingHostedZoneDomain
+          - PreExistingSiteBucket
+          - PreExistingRedirectBucket
+          - PreExistingLogsBucket
