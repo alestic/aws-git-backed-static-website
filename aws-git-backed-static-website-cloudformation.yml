@@ -60,7 +60,7 @@ Parameters:
   GeneratorLambdaFunctionS3Key:
     Type: String
     Description: "S3 key containing ZIP of AWS Lambda function (static site generator)"
-    Default: "lambda/aws-lambda-codepipeline-site-generator-identity.zip"
+    Default: "lambda/aws-lambda-site-generator-identity.zip"
   GeneratorLambdaFunctionRuntime:
     Type: String
     Description: "Runtime language for AWS Lambda function (static site generator)"
@@ -514,7 +514,6 @@ Metadata:
           default: Website and Git repository
         Parameters:
           - DomainName
-          - PreExistingHostedZoneDomain
       - Label:
           default: Git Activity
         Parameters:
@@ -538,3 +537,7 @@ Metadata:
           - PriceClass
           - MinimumTTL
           - DefaultTTL
+      - Label:
+          default: PreExisting Resources To Use (Leave empty for stack to create and manage)
+        Parameters:
+          - PreExistingHostedZoneDomain

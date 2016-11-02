@@ -103,7 +103,7 @@ specify the Hugo static site generator plugin by adding these
 parameters:
 
         "ParameterKey=GeneratorLambdaFunctionS3Bucket,ParameterValue=run.alestic.com" \
-        "ParameterKey=GeneratorLambdaFunctionS3Key,ParameterValue=lambda/aws-lambda-codepipeline-site-generator-hugo.zip"
+        "ParameterKey=GeneratorLambdaFunctionS3Key,ParameterValue=lambda/aws-lambda-site-generator-hugo.zip"
 
 When the stack starts up, two email messages will be sent to the
 address associated with your domain's registration and one will be
