@@ -144,7 +144,7 @@ Set nameservers in your domain registrar to the above.
 ### Use Git
 
     repository=$domain
-    profile=$AWS_DEFAULT_PROFILE   # The correct aws-cli profile name
+    profile=$AWS_PROFILE   # The correct aws-cli profile name
 
     git clone \
       --config 'credential.helper=!aws codecommit --profile '$profile' --region '$region' credential-helper $@' \
