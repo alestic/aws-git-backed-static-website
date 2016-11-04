@@ -122,12 +122,18 @@ Parameters:
     Type: String
     Default: ""
 
+  PreExistingCodePipelineBucket:
+    Description: "Optional name of pre-existing CodePipeline artifact bucket. Leave empty to have CodePipeline bucket created and managed by this stack."
+    Type: String
+    Default: ""
+
 Conditions:
   NeedsNewGitRepository: !Equals [!Ref PreExistingGitRepository, ""]
   NeedsNewHostedZone: !Equals [!Ref PreExistingHostedZoneDomain, ""]
   NeedsNewSiteBucket: !Equals [!Ref PreExistingSiteBucket, ""]
   NeedsNewRedirectBucket: !Equals [!Ref PreExistingRedirectBucket, ""]
   NeedsNewLogsBucket: !Equals [!Ref PreExistingLogsBucket, ""]
+  NeedsNewCodePipelineBucket: !Equals [!Ref PreExistingCodePipelineBucket, ""]
 
 Resources:
   # Bucket for CloudFront and S3 access logs: logs.example.com
@@ -174,6 +180,7 @@ Resources:
 
   # Bucket for CodePipeline artifact storage: codepipeline.example.com
   CodePipelineBucket:
+    Condition: NeedsNewCodePipelineBucket
     Type: "AWS::S3::Bucket"
     Properties:
       BucketName: !Sub "codepipeline.${DomainName}"
@@ -353,7 +360,7 @@ Resources:
                   - s3:ListBucketMultipartUploads
                 Resource:
                   - !Join ["", ["arn:aws:s3:::", !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket]]]
-                  - !Sub "arn:aws:s3:::${CodePipelineBucket}"
+                  - !Join ["", ["arn:aws:s3:::", !If [NeedsNewCodePipelineBucket, !Ref CodePipelineBucket, !Ref PreExistingCodePipelineBucket]]]
               - Effect: Allow
                 Action:
                   - s3:AbortMultipartUpload
@@ -365,7 +372,7 @@ Resources:
                   - s3:PutObjectAcl
                 Resource:
                   - !Join ["", ["arn:aws:s3:::", !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket], "/*"]]
-                  - !Sub "arn:aws:s3:::${CodePipelineBucket}/*"
+                  - !Join ["", ["arn:aws:s3:::", !If [NeedsNewCodePipelineBucket, !Ref CodePipelineBucket, !Ref PreExistingCodePipelineBucket], "/*"]]
 
   GeneratorLambdaFunction:
     Type: "AWS::Lambda::Function"
@@ -425,7 +432,7 @@ Resources:
       Name: !Sub "${DomainName}-codepipeline"
       ArtifactStore:
         Type: S3
-        Location: !Ref CodePipelineBucket
+        Location: !If [NeedsNewCodePipelineBucket, !Ref CodePipelineBucket, !Ref PreExistingCodePipelineBucket]
       RestartExecutionOnUpdate: false
       RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/${CodePipelineRole}"
       Stages:
