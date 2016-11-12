@@ -312,7 +312,7 @@ Resources:
         - Endpoint: !Ref NotificationEmail
           Protocol: email
 
-  # Git repositry: example.com
+  # Git repository: example.com
   GitRepository:
     Condition: NeedsNewGitRepository
     Type: "AWS::CodeCommit::Repository"
@@ -594,3 +594,4 @@ Metadata:
           - PreExistingSiteBucket
           - PreExistingRedirectBucket
           - PreExistingLogsBucket
+          - PreExistingCodePipelineBucket
