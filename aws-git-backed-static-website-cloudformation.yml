@@ -445,7 +445,7 @@ Resources:
                 Provider: CodeCommit
                 Version: 1
               Configuration:
-                RepositoryName: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
+                RepositoryName: !If [NeedsNewGitRepository, !Ref GitRepository, !Ref PreExistingGitRepository]
                 BranchName: master
               OutputArtifacts:
                 - Name: SiteSource
