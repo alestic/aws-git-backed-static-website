@@ -302,6 +302,7 @@ Resources:
           AliasTarget:
             HostedZoneId: Z2FDTNDATAQYW2 # CloudFront
             DNSName: !GetAtt RedirectCloudFrontDistribution.DomainName
+    DeletionPolicy: Retain
 
   # SNS topic for Git repository activity. Email subscription
   NotificationTopic:
