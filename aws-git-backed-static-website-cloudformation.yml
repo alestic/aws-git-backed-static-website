@@ -282,6 +282,7 @@ Resources:
       HostedZoneConfig:
         Comment: !Sub "Created by CloudFormation stack: ${AWS::StackName}"
       Name: !Ref DomainName
+    DeletionPolicy: Retain
   Route53RecordSetGroup:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
@@ -302,7 +303,6 @@ Resources:
           AliasTarget:
             HostedZoneId: Z2FDTNDATAQYW2 # CloudFront
             DNSName: !GetAtt RedirectCloudFrontDistribution.DomainName
-    DeletionPolicy: Retain
 
   # SNS topic for Git repository activity. Email subscription
   NotificationTopic:
@@ -446,7 +446,7 @@ Resources:
                 Provider: CodeCommit
                 Version: 1
               Configuration:
-                RepositoryName: !If [NeedsNewGitRepository, !Ref GitRepository, !Ref PreExistingGitRepository]
+                RepositoryName: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
                 BranchName: master
               OutputArtifacts:
                 - Name: SiteSource
@@ -549,7 +549,7 @@ Outputs:
     Value: !Ref CodePipeline
   GitRepositoryName:
     Description: Git repository name
-    Value: !If [NeedsNewGitRepository, !Ref GitRepository, !Ref PreExistingGitRepository]
+    Value: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
   GitCloneUrlHttp:
     Description: Git https clone endpoint
     Value: !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlHttp, "N/A"]

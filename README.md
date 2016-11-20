@@ -161,13 +161,26 @@ Set nameservers in your domain registrar to the above.
       --region "$region" \
       --stack-name "$stackname"
 
-Leaves behind buckets and Git repo.
+Leaves behind Route 53 hosted zone, S3 buckets, and Git repository.
 
-### Clean up Git repo and buckets
+### Clean up Route 53 hosted zone
+
+    region=...
+    stackname=...
+    domain=...
+
+    hosted_zone_id=$(aws cloudformation describe-stacks \
+      --region "$region" \
+      --stack-name "$stackname" \
+      --output text \
+      --query 'Stacks[*].Outputs[?OutputKey==`HostedZoneId`].[OutputValue]')
+    aws route53 delete-hosted-zone \
+      --region "$region" \
+      --id "$hosted_zone_id"
+
+### Clean up S3 buckets
 
     # WARNING! DESTROYS CONTENT AND LOGS!
-
-    domain=...
 
     aws s3 rm --recursive s3://logs.$domain
     aws s3 rb s3://logs.$domain
@@ -184,8 +197,6 @@ versioned codepipeline bucket.
 
     # WARNING! DESTROYS CONTENT!
 
-    repository=...
-
     #aws codecommit delete-repository \
       --region "$region" \
-      --repository-name "$repository"
+      --repository-name "$domain"
