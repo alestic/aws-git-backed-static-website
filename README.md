@@ -165,17 +165,15 @@ Leaves behind Route 53 hosted zone, S3 buckets, and Git repository.
 
 ### Clean up Route 53 hosted zone
 
-    region=...
-    stackname=...
     domain=...
 
-    hosted_zone_id=$(aws cloudformation describe-stacks \
-      --region "$region" \
-      --stack-name "$stackname" \
-      --output text \
-      --query 'Stacks[*].Outputs[?OutputKey==`HostedZoneId`].[OutputValue]')
+    hosted_zone_id=$(
+      aws route53 list-hosted-zones \
+        --output text \
+        --query 'HostedZones[?Name==`'$domain'.`].Id'
+    )
+    echo hosted_zone_id=$hosted_zone_id
     aws route53 delete-hosted-zone \
-      --region "$region" \
       --id "$hosted_zone_id"
 
 ### Clean up S3 buckets
