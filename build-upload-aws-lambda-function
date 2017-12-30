@@ -17,7 +17,7 @@ virtualenv=$tmpdir/virtual-env
 (
   virtualenv $virtualenv
   source $virtualenv/bin/activate
-  pip install awscli
+  pip install awscli boto3
 )
 
 # "aws" command (fixing shabang line)
