@@ -3,16 +3,21 @@
 
 ![diagram](https://raw.githubusercontent.com/alestic/aws-git-backed-static-website/master/aws-git-backed-static-website-architecture.gif "Architecture dagram: Git-backed static website powerd by AWS")
 
-[![Launch CloudFormation stack][2]][1]
+[![Launch CloudFormation stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)][1]
+
 [1]: https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?templateURL=https:%2F%2Fs3.amazonaws.com%2Frun.alestic.com%2Fcloudformation%2Faws-git-backed-static-website-cloudformation.yml&stackName=aws-git-backed-static-website
-[2]: https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png 
+
+## Blog Article
+
+[AWS Git-backed Static Website][blog]
+[blog]: https://github.com/alestic/aws-git-backed-static-website
 
 ## Overview
 
 This project contains a YAML CloudFormation template that creates a
-Git repository and a static https website, along with the necessary
-AWS infrastructure glue so that every change to content in the Git
-repository is automatically deployed to the static web site.
+CodeCommit Git repository and a static https website, along with the
+necessary AWS infrastructure glue so that every change to content in
+the Git repository is automatically deployed to the static web site.
 
 The website can serve the exact contents of the Git repository, or a
 static site generator plugin (e.g., Hugo) can be specified on launch
@@ -25,8 +30,8 @@ The primary output values are a list of nameservers to set in your
 domain's registrar and a Git repository URL for adding and updating
 the website content.
 
-Git repository event notifications are sent to an SNS topic and your
-provided email address is initially subscribed.
+CodeCommit Git repository event notifications are sent to an SNS topic
+and your provided email address is initially subscribed.
 
 Access logs for the website are stored in an S3 bucket.
 
