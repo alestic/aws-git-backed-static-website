@@ -14,6 +14,7 @@ from boto3.session import Session
 import boto3
 import botocore
 import os
+import time
 import zipfile
 import tempfile
 import shutil
@@ -21,6 +22,7 @@ import subprocess
 import traceback
 
 code_pipeline = boto3.client('codepipeline')
+cloudfront = boto3.client('cloudfront')
 
 def setup(event):
     # Extract attributes passed in by CodePipeline
@@ -35,7 +37,6 @@ def setup(event):
     #output_artifact = job_data['outputArtifacts'][0]
     #to_bucket = output_artifact['location']['s3Location']['bucketName']
     #to_key = output_artifact['location']['s3Location']['objectKey']
-    user_parameters = config['UserParameters']
 
     # Temporary credentials to access CodePipeline artifact in S3
     key_id = credentials['accessKeyId']
@@ -47,8 +48,7 @@ def setup(event):
     s3 = session.client('s3',
                         config=botocore.client.Config(signature_version='s3v4'))
 
-    return (job_id, s3, from_bucket, from_key, from_revision,
-            user_parameters)
+    return (job_id, s3, from_bucket, from_key, from_revision)
 
 def download_source(s3, from_bucket, from_key, from_revision, source_dir):
     with tempfile.NamedTemporaryFile() as tmp_file:
@@ -59,10 +59,10 @@ def download_source(s3, from_bucket, from_key, from_revision, source_dir):
 
 def handler(event, context):
     try:
-        (job_id, s3, from_bucket, from_key, from_revision,
-         user_parameters) = setup(event)
+        (job_id, s3, from_bucket, from_key, from_revision) = setup(event)
 
-        to_bucket = user_parameters
+        to_bucket = os.environ['site_bucket']
+        cloudfront_distribution = os.environ['cloudfront_distribution']
 
         # Directories for source content, and transformed static site
         source_dir = tempfile.mkdtemp()
@@ -72,6 +72,9 @@ def handler(event, context):
 
         # Generate static website from source
         upload_static_site(source_dir, to_bucket)
+
+        # Invalidate content cached in the CloudFront distribution
+        invalidate_cloudfront(cloudfront_distribution)
 
         # Tell CodePipeline we succeeded
         code_pipeline.put_job_success_result(jobId=job_id)
@@ -93,3 +96,15 @@ def upload_static_site(source_dir, to_bucket):
                source_dir + "/", "s3://" + to_bucket + "/"]
     print(command)
     print(subprocess.check_output(command, stderr=subprocess.STDOUT))
+
+def invalidate_cloudfront(cloudfront_distribution):
+    response = cloudfront.create_invalidation(
+        DistributionId=cloudfront_distribution,
+        InvalidationBatch={
+            'Paths': {
+                'Quantity': 1,
+                'Items': ['/*']
+            },
+            'CallerReference': str(time.time())
+        }
+    )

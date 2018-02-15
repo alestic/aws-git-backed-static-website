@@ -374,6 +374,9 @@ Resources:
                 Resource:
                   - !Join ["", ["arn:aws:s3:::", !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket], "/*"]]
                   - !Join ["", ["arn:aws:s3:::", !If [NeedsNewCodePipelineBucket, !Ref CodePipelineBucket, !Ref PreExistingCodePipelineBucket], "/*"]]
+              - Effect: Allow
+                Action: "cloudfront:CreateInvalidation"
+                Resource: "*"
 
   GeneratorLambdaFunction:
     Type: "AWS::Lambda::Function"
@@ -401,6 +404,10 @@ Resources:
       Code:
         S3Bucket: !Ref SyncLambdaFunctionS3Bucket
         S3Key: !Ref SyncLambdaFunctionS3Key
+      Environment:
+        Variables:
+          site_bucket: !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket]
+          cloudfront_distribution: !Ref CloudFrontDistribution
 
   # IAM info for CodePipeline
   CodePipelineRole:
@@ -479,7 +486,6 @@ Resources:
                 Version: 1
               Configuration:
                 FunctionName: !Ref SyncLambdaFunction
-                UserParameters: !If [NeedsNewSiteBucket, !Ref SiteBucket, !Ref PreExistingSiteBucket]
               RunOrder: 1
 
 Mappings:
