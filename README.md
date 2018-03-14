@@ -13,7 +13,7 @@
 
 [AWS Git-backed Static Website][blog]
 
-[blog]: https://github.com/alestic/aws-git-backed-static-website
+[blog]: https://alestic.com/2016/10/aws-git-backed-static-website/
 
 ## Overview
 
