@@ -36,6 +36,18 @@ Parameters:
     AllowedPattern: ".+@[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid email address"
 
+  IndexDocument:
+    Type: String
+    Description: "Filename to use for home page and directory path requests"
+    Default: "index.html"
+    ConstraintDescription: "Provide a valid index document file name"
+
+  ErrorDocument:
+    Type: String
+    Description: "Filename to use for errors (e.g., not found)"
+    Default: "error.html"
+    ConstraintDescription: "Provide a valid error document file name"
+
   DefaultTTL:
     Type: Number
     Description: "TTL in seconds"
@@ -153,8 +165,8 @@ Resources:
       BucketName: !Ref DomainName
       AccessControl: PublicRead
       WebsiteConfiguration:
-        IndexDocument: index.html
-        ErrorDocument: error.html
+        IndexDocument: !Ref IndexDocument
+        ErrorDocument: !Ref ErrorDocument
       # logs.example.com/logs/s3/example.com/
       LoggingConfiguration:
         DestinationBucketName: !If [NeedsNewLogsBucket, !Ref LogsBucket, !Ref PreExistingLogsBucket]
