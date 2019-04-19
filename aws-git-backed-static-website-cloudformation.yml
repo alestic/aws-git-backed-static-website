@@ -207,6 +207,7 @@ Resources:
       DomainName: !Ref DomainName
       SubjectAlternativeNames:
         - !Sub "www.${DomainName}"
+      ValidationMethod: DNS
 
   # CDN serves S3 content over HTTPS for example.com
   CloudFrontDistribution:
