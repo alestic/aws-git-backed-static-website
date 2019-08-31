@@ -109,6 +109,11 @@ Parameters:
     Description: "S3 key containing ZIP of AWS Lambda function (sync to S3)"
     Default: "lambda/aws-lambda-git-backed-static-website.zip"
 
+  CertificateValidationMethod:
+    Type: String
+    Description: "Validation method for ACM certificate (DNS or EMAIL)"
+    Default: "DNS"
+
   PreExistingGitRepository:
     Description: "Optional Git repository name for pre-existing CodeCommit repository. Leave empty to have CodeCommit Repository created and managed by this stack."
     Type: String
@@ -207,7 +212,7 @@ Resources:
       DomainName: !Ref DomainName
       SubjectAlternativeNames:
         - !Sub "www.${DomainName}"
-      ValidationMethod: DNS
+      ValidationMethod: !Ref CertificateValidationMethod
 
   # CDN serves S3 content over HTTPS for example.com
   CloudFrontDistribution:
