@@ -113,16 +113,22 @@ parameters:
         "ParameterKey=GeneratorLambdaFunctionS3Bucket,ParameterValue=run.alestic.com" \
         "ParameterKey=GeneratorLambdaFunctionS3Key,ParameterValue=lambda/aws-lambda-site-generator-hugo.zip"
 
-When the stack starts up, two email messages will be sent to the
-address associated with your domain's registration and one will be
-sent to your AWS account address. Open each email and approve these:
+Go to the email address you used above and approve the SNS topic
+subscription.
 
- - ACM Certificate (2)
- - SNS topic subscription
+When the stack starts up, the ACM certificate will be in "pending"
+status until you verify ownership of the domain.
 
-The CloudFormation stack will be stuck until the ACM certificates are
-approved. The CloudFront distributions are created afterwards and can
-take over 30 minutes to complete.
+If you are using "EMAIL" as the CertificateValidationMethod, then you
+need to open the email sent to the address associated with your
+domain's registration and approve it.
+
+If you are using "DNS" as the CertificateValidationMethod, then go to
+the AWS Certificate Manager (ACM) console, find the two pending
+certificates, and click "Create record in Route 53" for both.
+
+Once the ACM certificates are verified, the CloudFront distributions
+will be created. This can take 20-40+ minutes to complete.
 
 ### Get the name servers for updating in the registrar
 
@@ -169,7 +175,11 @@ Set nameservers in your domain registrar to the above.
       --region "$region" \
       --stack-name "$stackname"
 
-Leaves behind Route 53 hosted zone, S3 buckets, and Git repository.
+This leaves behind:
+
+  - Route 53 hosted zone
+  - S3 buckets
+  - Git repository
 
 ### Clean up Route 53 hosted zone
 
