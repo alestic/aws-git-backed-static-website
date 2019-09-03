@@ -17,10 +17,11 @@
 
 ## Overview
 
-This project contains a YAML CloudFormation template that creates a
-CodeCommit Git repository and a static https website, along with the
-necessary AWS infrastructure glue so that every change to content in
-the Git repository is automatically deployed to the static web site.
+This project contains a YAML CloudFormation template that, by default,
+creates a CodeCommit Git repository and a static https website, along
+with the necessary AWS infrastructure glue so that every change to
+content in the Git repository is automatically deployed to the static
+web site.
 
 The website can serve the exact contents of the Git repository, or a
 static site generator plugin (e.g., Hugo) can be specified on launch
@@ -166,6 +167,37 @@ Set nameservers in your domain registrar to the above.
       $git_clone_url_http
 
     cd $repository
+
+## Using GitHub
+
+Thanks to the folks at [Elementryx][elementryx], this CloudFormation
+template has been extended to support public and private repositories
+in GitHub as an alternative to AWS CodeCommit.
+
+Your GitHub repository must already exist when you create or update
+the CloudFormation stack. You must also generate a (secret) personal
+access token on GitHub and save it in AWS SSM Parameter Store.
+
+Here are Amazon's instructions for generating the GitHub personal
+access token on GitHub (ignore the steps after you generate the token
+on GitHub and copy it):
+
+> https://docs.aws.amazon.com/codepipeline/latest/userguide/GitHub-create-personal-token-CLI.html
+
+Once you have the token, save it in SSM Parameter Store:
+
+    github_token="YOUR-SECRET-GITHUB-TOKEN"
+    github_token_key="/YOUR-SSM-PARAMETER-STORE-KEY-FOR-GITHUB-TOKEN"
+
+    # Should be SecureString, but not yet supported by CloudFormation!
+    aws ssm put-parameter \
+      --type String \
+      --name "$github_token_key" \
+      --value "$gitub_token"
+
+    unset github_token
+
+[elementryx]: https://github.com/elementryx/codepipeline-powered-static-website
 
 ## Clean up after testing
 

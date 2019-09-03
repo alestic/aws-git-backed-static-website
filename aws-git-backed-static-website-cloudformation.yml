@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |
   Static web site stack including:
-  * CodeCommit Git repository
+  * CodeCommit Git repository (OR) GitHub Git repository
   * S3 bucket for web site content
   * Redirect from "www." to base domain
   * Access logs written to logs bucket
@@ -27,8 +27,8 @@ Parameters:
     AllowedPattern: "[a-z0-9]+[-.a-z0-9]*(\\.[a-z][a-z]+)+"
     ConstraintDescription: "Provide a valid domain name using only lowercase letters, numbers, and dash (-)"
 
-  # Email address to receive Git activity notifications: you@anotherdomain.com
-  # CANNOT be in same domain!
+  # Email address to receive CodeCommit Git activity notifications:
+  # you@anotherdomain.com (CANNOT be in same domain!)
   NotificationEmail:
     Type: String
     Description: "Initial email address to receive Git change notifications"
@@ -114,6 +114,34 @@ Parameters:
     Description: "Validation method for ACM certificate (DNS or EMAIL)"
     Default: "DNS"
 
+  SourceType:
+    Description: "CodeCommit | GitHub"
+    Type: String
+    Default: "CodeCommit"
+    AllowedValues:
+      - CodeCommit
+      - GitHub
+
+  BranchName:
+    Description: "Name of Git branch to build from"
+    Type: String
+    Default: master
+
+  GitHubRepository:
+    Description: "Optional GitHub repository name for pre-existing GitHub repository. Leave empty to use CodeCommit."
+    Type: String
+    Default: ""
+
+  GitHubUser:
+    Description: "Optional GitHub user name that owns the GitHub repository. Leave empty to use CodeCommit."
+    Type: String
+    Default: ""
+
+  GitHubToken:
+    Description: "Optional SSM Parameter Store key containing GitHub access token of pre-existing GitHub repository. DO NOT PASS OATH TOKEN HERE! Leave empty to use CodeCommit. See: https://github.com/settings/tokens"
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: ""
+
   PreExistingGitRepository:
     Description: "Optional Git repository name for pre-existing CodeCommit repository. Leave empty to have CodeCommit Repository created and managed by this stack."
     Type: String
@@ -145,7 +173,8 @@ Parameters:
     Default: ""
 
 Conditions:
-  NeedsNewGitRepository: !Equals [!Ref PreExistingGitRepository, ""]
+  UseCodeCommit: !Equals [!Ref SourceType, "CodeCommit"]
+  NeedsNewGitRepository: !And [!Equals [!Ref PreExistingGitRepository, ""], !Equals [!Ref SourceType, "CodeCommit"]]
   NeedsNewHostedZone: !Equals [!Ref PreExistingHostedZoneDomain, ""]
   NeedsNewSiteBucket: !Equals [!Ref PreExistingSiteBucket, ""]
   NeedsNewRedirectBucket: !Equals [!Ref PreExistingRedirectBucket, ""]
@@ -467,12 +496,20 @@ Resources:
             - Name: SourceAction
               ActionTypeId:
                 Category: Source
-                Owner: AWS
-                Provider: CodeCommit
+                Owner: !If [UseCodeCommit, "AWS", "ThirdParty"]
+                Provider: !Ref SourceType
                 Version: 1
               Configuration:
-                RepositoryName: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
-                BranchName: master
+                !If
+                - UseCodeCommit
+                - 
+                  RepositoryName: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
+                  BranchName: !Ref BranchName
+                -
+                  Owner: !Ref GitHubUser
+                  Repo: !Ref GitHubRepository
+                  Branch: !Ref BranchName
+                  OAuthToken: !Ref GitHubToken
               OutputArtifacts:
                 - Name: SiteSource
               RunOrder: 1
@@ -573,13 +610,13 @@ Outputs:
     Value: !Ref CodePipeline
   GitRepositoryName:
     Description: Git repository name
-    Value: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
+    Value: !If [UseCodeCommit, !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository], !Ref GitHubRepository]
   GitCloneUrlHttp:
     Description: Git https clone endpoint
-    Value: !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlHttp, "N/A"]
+    Value: !If [UseCodeCommit, !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlHttp, "N/A"], "N/A"]
   GitCloneUrlSsh:
     Description: Git ssh clone endpoint
-    Value: !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlSsh, "N/A"]
+    Value: !If [UseCodeCommit, !If [NeedsNewGitRepository, !GetAtt GitRepository.CloneUrlSsh, "N/A"], "N/A"]
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -611,6 +648,16 @@ Metadata:
           - PriceClass
           - MinimumTTL
           - DefaultTTL
+
+      - Label:
+          default: Git Source
+        Parameters:
+          - SourceType
+          - BranchName
+          - GitHubRepository
+          - GitHubUser
+          - GitHubToken
+
       - Label:
           default: PreExisting Resources To Use (Leave empty for stack to create and manage)
         Parameters:
