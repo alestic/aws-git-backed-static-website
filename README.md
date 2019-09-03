@@ -197,6 +197,20 @@ Once you have the token, save it in SSM Parameter Store:
 
     unset github_token
 
+Now set up these environment variables:
+
+    source_type=GitHub
+    github_user="YOUR-GITHUB-USER"
+    github_repository="YOUR-GITHUB-REPO"
+    github_token_key="SAME-AS-ABOVE"
+
+and pass in these parameters when running the CloudFormation template above:
+
+        "ParameterKey=SourceType,ParameterValue=$source_type" \
+        "ParameterKey=GitHubRepository,ParameterValue=$github_repository" \
+        "ParameterKey=GitHubUser,ParameterValue=$github_user" \
+        "ParameterKey=GitHubToken,ParameterValue=$github_token_key"
+
 [elementryx]: https://github.com/elementryx/codepipeline-powered-static-website
 
 ## Clean up after testing
