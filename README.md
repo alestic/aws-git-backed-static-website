@@ -206,7 +206,8 @@ Now set up these environment variables:
     github_repository="YOUR-GITHUB-REPO"
     github_token_key="SAME-AS-ABOVE"
 
-and pass in these parameters when running the CloudFormation template above:
+and pass in these parameters when creating or updating the
+CloudFormation stack above:
 
         "ParameterKey=SourceType,ParameterValue=$source_type" \
         "ParameterKey=GitHubRepository,ParameterValue=$github_repository" \
