@@ -11,6 +11,8 @@
 
 ## Blog Article
 
+Please read the following blog article for more information:
+
 [AWS Git-backed Static Website][blog]
 
 [blog]: https://alestic.com/2016/10/aws-git-backed-static-website/
