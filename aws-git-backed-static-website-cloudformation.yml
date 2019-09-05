@@ -140,6 +140,7 @@ Parameters:
   GitHubToken:
     Description: "Optional SSM Parameter Store key containing GitHub access token of pre-existing GitHub repository. DO NOT PASS OATH TOKEN HERE! Leave empty to use CodeCommit. See: https://github.com/settings/tokens"
     Type : 'AWS::SSM::Parameter::Value<String>'
+    NoEcho: true
     Default: ""
 
   PreExistingGitRepository:
