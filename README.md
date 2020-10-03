@@ -32,12 +32,12 @@ repository.
 
 The required stack parameters are a domain name and an email address.
 
-The primary output values are a list of nameservers to set in your
+The primary output values are a list of name servers to set in your
 domain's registrar and a Git repository URL for adding and updating
 the website content.
 
 CodeCommit Git repository event notifications are sent to an SNS topic
-and your provided email address is initially subscribed.
+and your provided e-mail address is initially subscribed.
 
 Access logs for the website are stored in an S3 bucket.
 
