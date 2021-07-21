@@ -195,7 +195,7 @@ Once you have the token, save it in SSM Parameter Store:
     aws ssm put-parameter \
       --type String \
       --name "$github_token_key" \
-      --value "$gitub_token"
+      --value "$github_token"
 
     unset github_token
 
