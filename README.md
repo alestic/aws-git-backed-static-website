@@ -184,7 +184,7 @@ Here are Amazon's instructions for generating the GitHub personal
 access token on GitHub (ignore the steps after you generate the token
 on GitHub and copy it):
 
-> https://docs.aws.amazon.com/codepipeline/latest/userguide/GitHub-create-personal-token-CLI.html
+> https://docs.aws.amazon.com/quickstart/latest/cicd-taskcat/step2.html
 
 Once you have the token, save it in SSM Parameter Store:
 
