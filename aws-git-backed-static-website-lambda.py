@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3.9
 #
 # Lambda function for git-backed-static-website
 #

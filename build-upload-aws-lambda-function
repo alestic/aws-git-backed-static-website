@@ -22,11 +22,11 @@ virtualenv=$tmpdir/virtual-env
 
 # "aws" command (fixing shabang line)
 rsync -va $virtualenv/bin/aws $tmpdir/aws
-perl -pi -e '$_ ="#!/usr/bin/python\n" if $. == 1' $tmpdir/aws
+perl -pi -e '$_ ="#!/var/lang/bin/python\n" if $. == 1' $tmpdir/aws
 (cd $tmpdir; zip -r9 $zipfile aws)
 
 # aws-cli package requirements
-(cd $virtualenv/lib/python2.7/site-packages && zip -r9 $zipfile *)
+(cd $virtualenv/lib/python3.10/site-packages && zip -r9 $zipfile *)
 
 # AWS Lambda function (with the right name)
 rsync -va aws-git-backed-static-website-lambda.py $tmpdir/index.py

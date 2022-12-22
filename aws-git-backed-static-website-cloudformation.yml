@@ -80,8 +80,9 @@ Parameters:
   GeneratorLambdaFunctionRuntime:
     Type: String
     Description: "Runtime language for AWS Lambda function (static site generator)"
-    Default: "python2.7"
+    Default: "python3.9"
     AllowedValues:
+      - "python3.9"
       - "python2.7"
       - "nodejs"
       - "nodejs4.3"
@@ -137,10 +138,14 @@ Parameters:
     Type: String
     Default: ""
 
-  GitHubToken:
-    Description: "Optional SSM Parameter Store key containing GitHub access token of pre-existing GitHub repository. DO NOT PASS OATH TOKEN HERE! Leave empty to use CodeCommit. See: https://github.com/settings/tokens"
-    Type : 'AWS::SSM::Parameter::Value<String>'
-    NoEcho: true
+  GitHubTokenName:
+    Description: "Optional name of the AWS Secrets Manager secret containing GitHub access token for pre-existing GitHub repository. DO NOT PASS THE OAUTH TOKEN HERE! Leave empty to use CodeCommit. See: https://github.com/settings/tokens"
+    Type: String
+    Default: ""
+
+  GitHubTokenVersion:
+    Description: "Optional version of the AWS Secrets Manager secret containing GitHub access token for pre-existing GitHub repository. Leave empty for AWSCURRENT or to use CodeCommit."
+    Type: String
     Default: ""
 
   PreExistingGitRepository:
@@ -447,7 +452,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 1536
       Timeout: 300
-      Runtime: python2.7
+      Runtime: python3.9
       Handler: index.handler
       Code:
         S3Bucket: !Ref SyncLambdaFunctionS3Bucket
@@ -510,7 +515,14 @@ Resources:
                   Owner: !Ref GitHubUser
                   Repo: !Ref GitHubRepository
                   Branch: !Ref BranchName
-                  OAuthToken: !Ref GitHubToken
+                  OAuthToken: !Join ['', ['{{resolve:secretsmanager:', !Ref GitHubTokenName, ':SecretString:::', !Ref GitHubTokenVersion, '}}' ]]
+
+                  #OAuthToken: !Join ['', ['{{resolve:ssm:', !Ref GitHubTokenName, ':', !Ref GitHubTokenVersion, '}}' ]]
+                  #OAuthToken: !Join ['', ['{{resolve:ssm-secure:', !Ref GitHubTokenName, ':', !Ref GitHubTokenVersion, '}}' ]]
+                  #OAuthToken: !Sub “{{resolve:secretsmanager:${GitHubTokenName}:SecretString:::${GitHubTokenVersion}}}”
+                  #OAuthToken: !Sub “{{resolve:ssm:${GitHubTokenName}:${GitHubTokenVersion}}}”
+                  #OAuthToken: !Sub “{{resolve:ssm-secure:${GitHubTokenName}:${GitHubTokenVersion}}}”
+
               OutputArtifacts:
                 - Name: SiteSource
               RunOrder: 1
@@ -657,7 +669,8 @@ Metadata:
           - BranchName
           - GitHubRepository
           - GitHubUser
-          - GitHubToken
+          - GitHubTokenName
+          - GitHubTokenVersion
 
       - Label:
           default: PreExisting Resources To Use (Leave empty for stack to create and manage)
