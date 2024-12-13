@@ -1,4 +1,3 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |
@@ -16,6 +15,7 @@ Description: |
   * AWS Lambda function to copy generated website to website S3 bucket
   * SNS topic for CodeCommit Git change notifications
   * Email address subscribed to SNS notification topic
+  * EventBridge rule for triggering pipeline on CodeCommit changes
 
 Parameters:
   # Domain: example.com
@@ -336,6 +336,7 @@ Resources:
         Comment: !Sub "Created by CloudFormation stack: ${AWS::StackName}"
       Name: !Ref DomainName
     DeletionPolicy: Retain
+
   Route53RecordSetGroup:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
@@ -474,6 +475,7 @@ Resources:
               Service:
                 - "lambda.amazonaws.com"
                 - "codepipeline.amazonaws.com"
+                - "events.amazonaws.com"
             Action:
               - "sts:AssumeRole"
       Path: "/"
@@ -486,7 +488,36 @@ Resources:
                 Action: "*"
                 Resource: "*"
 
-  # CodePipeline: Pass Git contents to AWS Lambda function on Git activity
+  # EventBridge rule for CodeCommit changes
+  CodeCommitEventRule:
+    Type: AWS::Events::Rule
+    Condition: UseCodeCommit
+    Properties:
+      Description: "Rule to trigger pipeline on CodeCommit repository changes"
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - 'CodeCommit Repository State Change'
+        resources:
+          - !If
+            - NeedsNewGitRepository
+            - !GetAtt GitRepository.Arn
+            - !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${PreExistingGitRepository}"
+        detail:
+          event:
+            - referenceCreated
+            - referenceUpdated
+          referenceType:
+            - branch
+          referenceName:
+            - !Ref BranchName
+      Targets:
+        - Arn: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${DomainName}-codepipeline"
+          RoleArn: !GetAtt CodePipelineRole.Arn
+          Id: "CodePipelineTarget"
+
   CodePipeline:
     Type: "AWS::CodePipeline::Pipeline"
     Properties:
@@ -508,9 +539,10 @@ Resources:
               Configuration:
                 !If
                 - UseCodeCommit
-                - 
+                -
                   RepositoryName: !If [NeedsNewGitRepository, !Ref DomainName, !Ref PreExistingGitRepository]
                   BranchName: !Ref BranchName
+                  PollForSourceChanges: false
                 -
                   Owner: !Ref GitHubUser
                   Repo: !Ref GitHubRepository
@@ -661,7 +693,6 @@ Metadata:
           - PriceClass
           - MinimumTTL
           - DefaultTTL
-
       - Label:
           default: Git Source
         Parameters:
@@ -671,7 +702,6 @@ Metadata:
           - GitHubUser
           - GitHubTokenName
           - GitHubTokenVersion
-
       - Label:
           default: PreExisting Resources To Use (Leave empty for stack to create and manage)
         Parameters:
